@@ -1,30 +1,15 @@
 <template>
-  <v-app>
+  <v-app full-height>
     <!-- 顶部菜单 -->
     <v-app-bar v-if="active_menu" density="compact" color="primary">
       <template v-slot:prepend>
-        <v-btn icon>
-          <v-icon>mdi-arrow-left</v-icon>
-        </v-btn>
+        <v-btn icon> <v-icon>mdi-arrow-left</v-icon> </v-btn>
       </template>
       <v-app-bar-title>{{ book_title }}</v-app-bar-title>
       <v-spacer></v-spacer>
-      <v-btn icon>
-        <v-icon>mdi-dots-vertical</v-icon>
-      </v-btn>
+      <v-btn icon> <v-icon>mdi-dots-vertical</v-icon> </v-btn>
     </v-app-bar>
 
-
-    <!-- 阅读界面 -->
-    <v-container fluid class="pa-0 fill-height">
-      <v-row no-gutters>
-        <v-col>
-          <div id="book-container">
-            <div id="reader" class="fill-height"></div>
-          </div>
-        </v-col>
-      </v-row>
-    </v-container>
 
     <!-- 底部菜单 -->
     <v-bottom-navigation absolute :active="active_menu" color="primary" z-index="2599">
@@ -56,6 +41,13 @@
     <v-bottom-sheet v-model="active_toc" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
       <book-toc :toc_items="toc_items" @click:select="click_toc"></book-toc>
     </v-bottom-sheet>
+
+    <!-- 阅读界面 -->
+    <v-main class="pa-0 fill-height">
+          <div id="book-container">
+            <div id="reader" class="fill-height"></div>
+          </div>
+    </v-main>
 
   </v-app>
 </template>
@@ -141,9 +133,10 @@ export default {
       flow: "paginated",
       width: "100%",
       height: "100%",
-      snap: true
+      // snap: true
 
     });
+
     //var cfi = "Text/chapter175.html";
     var cfi = "Text/part0010.xhtml";
     this.rendition.display(cfi);
@@ -157,6 +150,9 @@ export default {
     });
 
     this.rendition.on('click', this.click_content, false);
+    this.rendition.on('touchend', (e) => {
+        console.log("touch", e);
+    }, false);
 
 
     this.rendition.themes.register("day", "themes.css");
@@ -204,11 +200,8 @@ export default {
 
 <style>
 #book-container {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  height: 100%;
+  width: 100%;
 }
 
 #reader {
