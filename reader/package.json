@@ -10,7 +10,6 @@
   "dependencies": {
     "@mdi/font": "7.4.47",
     "core-js": "^3.37.1",
-    "epubjs": "^0.3.93",
     "roboto-fontface": "*",
     "vue": "^3.4.31",
     "vuetify": "^3.6.11"
