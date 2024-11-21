@@ -1,7 +1,7 @@
 <template>
-    <v-list density="compact">
+    <v-list id='book-comments' density="compact">
         <template v-for="c in comments">
-            <v-list-item align=start class="mb-4" slim :prepend-avatar="c.avatar" append-icon="mdi-thumb-up" :title="c.nickName">
+            <v-list-item class="align-self-start mb-4" :prepend-avatar="c.avatar" append-icon="mdi-thumb-up" :title="c.nickName">
                 <v-list-item-content>{{c.content}}</v-list-item-content>
                 <v-list-item-subtitle>{{c.level}}楼 * {{c.createTime}} * {{c.ipAddress}}</v-list-item-subtitle>
                 <template v-slot:prepend>
@@ -48,3 +48,10 @@ export default {
 }
 
 </script>
+
+<style>
+#book-comments .v-list-item__append,
+#book-comments .v-list-item__prepend {
+    align-self: flex-start
+}
+</style>
