@@ -14,7 +14,7 @@
       <v-btn value="favorites" @click="show_toc()"> <v-icon>mdi-book-open-variant-outline</v-icon> <span>目录</span> </v-btn>
       <v-btn value="theme" @click="switch_theme"> <v-icon>{{ switch_theme_icon }}</v-icon> <span>{{ switch_theme_text }}</span> </v-btn>
       <v-btn value="settings" @click="show_settings()"> <v-icon>mdi-cog</v-icon> <span>设置</span> </v-btn>
-      <v-btn value="next" @click='rendition.next()'> <v-icon>mdi-dots-horizontal-circle-outline</v-icon> <span>更多</span> </v-btn>
+      <v-btn value="next" @click='show_more()'> <v-icon>mdi-dots-horizontal-circle-outline</v-icon> <span>更多</span> </v-btn>
     </v-bottom-navigation>
 
     <v-bottom-sheet v-model="active_settings" contained persistent style="margin-bottom: 56px;" z-index="234">
@@ -23,6 +23,13 @@
 
     <v-bottom-sheet v-model="active_toc" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
       <book-toc :toc_items="toc_items" @click:select="on_click_toc"></book-toc>
+    </v-bottom-sheet>
+
+    <v-bottom-sheet v-model="active_more" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
+        <!--
+      <book-meta :meta="book_meta"></book-meta>
+        -->
+        <book-comments></book-comments>
     </v-bottom-sheet>
 
     <!-- 阅读界面 -->
@@ -36,12 +43,9 @@
 </template>
 
 <script>
-import FootBar from '../components/FootBar.vue'
-
 export default {
   name: 'EpubReader',
   components: {
-    FootBar,
   },
   computed: {
     switch_theme_icon: function () {
@@ -64,11 +68,18 @@ export default {
     },
     show_settings() {
       this.active_toc = false;
+      this.active_more = false;
       this.active_settings = !this.active_settings;
     },
     show_toc() {
       this.active_settings = false;
+      this.active_more = false;
       this.active_toc = !this.active_toc;
+    },
+    show_more() {
+      this.active_settings = false;
+      this.active_toc = false;
+      this.active_more = !this.active_more;
     },
     on_click_toc: function (item) {
       console.log(item);
@@ -170,6 +181,8 @@ export default {
     });
 
     this.book.loaded.metadata.then(metadata => {
+        console.log(metadata);
+        this.book_meta = metadata;
       this.book_title = metadata.title;
     });
 
@@ -191,13 +204,14 @@ export default {
   data: () => ({
     book: null,
     book_title: "",
+    book_meta: null,
     alert_msg: "x",
     rendition: null,
     auto_close: false,
     active_menu: true,
     active_toc: false,
     active_settings: false,
-    active_more: false,
+    active_more: true,
     theme_mode: "day",
     toc_items: [],
     comments: [
