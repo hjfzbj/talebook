@@ -11,21 +11,21 @@
 
     <!-- 底部菜单 -->
     <v-bottom-navigation :active="active_menu" color="primary" z-index="2599">
-      <v-btn value="favorites" @click="show_toc()"> <v-icon>mdi-book-open-variant-outline</v-icon> <span>目录</span> </v-btn>
+      <v-btn value="toc" @click="set_menu('toc')"> <v-icon>mdi-book-open-variant-outline</v-icon> <span>目录</span> </v-btn>
       <v-btn value="theme" @click="switch_theme"> <v-icon>{{ switch_theme_icon }}</v-icon> <span>{{ switch_theme_text }}</span> </v-btn>
-      <v-btn value="settings" @click="show_settings()"> <v-icon>mdi-cog</v-icon> <span>设置</span> </v-btn>
-      <v-btn value="next" @click='show_more()'> <v-icon>mdi-dots-horizontal-circle-outline</v-icon> <span>更多</span> </v-btn>
+      <v-btn value="setting" @click="set_menu('settings')"> <v-icon>mdi-cog</v-icon> <span>设置</span> </v-btn>
+      <v-btn value="more" @click="set_menu('more')"> <v-icon>mdi-comment-text-outline</v-icon> <span>评论</span> </v-btn>
     </v-bottom-navigation>
 
-    <v-bottom-sheet v-model="active_settings" contained persistent style="margin-bottom: 56px;" z-index="234">
-      <settings @update:theme="update_theme"></settings>
+    <v-bottom-sheet max-height="90%" v-model="menu_settings" contained persistent style="margin-bottom: 56px;" z-index="234">
+      <settings :settings="settings" @update="update_settings"></settings>
     </v-bottom-sheet>
 
-    <v-bottom-sheet v-model="active_toc" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
-      <book-toc :toc_items="toc_items" @click:select="on_click_toc"></book-toc>
+    <v-bottom-sheet max-height="90%" v-model="menu_toc" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
+      <book-toc :meta="book_meta" :toc_items="toc_items" @click:select="on_click_toc"></book-toc>
     </v-bottom-sheet>
 
-    <v-bottom-sheet v-model="active_more" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
+    <v-bottom-sheet max-height="90%" v-model="menu_more" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
         <!--
       <book-meta :meta="book_meta"></book-meta>
         -->
@@ -49,37 +49,46 @@ export default {
   },
   computed: {
     switch_theme_icon: function () {
-      return this.theme_mode == "day" ? "mdi-weather-night" : "mdi-weather-sunny";
+      return this.settings.theme_mode == "day" ? "mdi-weather-night" : "mdi-weather-sunny";
     },
     switch_theme_text: function () {
-      return this.theme_mode == "day" ? "夜晚" : "白天";
+      return this.settings.theme_mode == "day" ? "夜晚" : "白天";
     },
-
   },
   methods: {
     switch_theme: function () {
-      this.theme_mode = this.theme_mode == "day" ? "night" : "day";
-      this.rendition.themes.select(this.theme_mode);
+        const mode = this.settings.theme_mode;
+        if ( mode == "day" ) {
+            this.settings.theme_mode = "night";
+            this.rendition.themes.select(this.settings.theme_night);
+        } else {
+            this.settings.theme_mode = "day";
+            this.rendition.themes.select(this.settings.theme_day);
+        }
     },
-    update_theme: function (theme) {
-      console.log('set theme', theme);
-      this.rendition.themes.select(theme);
-
+    set_menu: function(target) {
+        if ( this.menu == target ) {
+            this.menu = 'hide';
+        } else {
+            this.menu = target;
+        }
+        console.log("set menu = ", this.menu);
+        this.menu_toc = false;
+        this.menu_more = false;
+        this.menu_settings = false;
+        if ( this.menu != 'hide' ) {
+            this["menu_" + target] = true;
+        }
     },
-    show_settings() {
-      this.active_toc = false;
-      this.active_more = false;
-      this.active_settings = !this.active_settings;
-    },
-    show_toc() {
-      this.active_settings = false;
-      this.active_more = false;
-      this.active_toc = !this.active_toc;
-    },
-    show_more() {
-      this.active_settings = false;
-      this.active_toc = false;
-      this.active_more = !this.active_more;
+    update_settings: function (opt) {
+        for ( const key in opt ) {
+            this.settings[key] = opt[key];
+        }
+        // 更新主题设定
+        const mode = opt["theme_mode"];
+        const theme_key = "theme_" + mode;
+        this.settings[theme_key] = this.settings.theme;
+        this.rendition.themes.select(this.settings.theme);
     },
     on_click_toc: function (item) {
       console.log(item);
@@ -174,7 +183,7 @@ export default {
     this.book = ePub("/book/");
     this.rendition = this.book.renderTo("reader", {
       manager: "continuous",
-      flow: "paginated",
+      flow: this.settings.flow,
       width: "100%",
       height: "100%",
       //snap: true
@@ -203,15 +212,25 @@ export default {
   },
   data: () => ({
     book: null,
+    settings: {
+        flow: "paginated",
+        font_size: 18,
+        brightness: 100,
+        theme: "eyecare",
+        theme_mode: "day",
+        theme_day: "eyecare",
+        theme_night: "night",
+    },
     book_title: "",
     book_meta: null,
     alert_msg: "x",
     rendition: null,
     auto_close: false,
     active_menu: true,
-    active_toc: false,
-    active_settings: false,
-    active_more: true,
+    menu: "hide",
+    menu_toc: false,
+    menu_more: false,
+    menu_settings: false,
     theme_mode: "day",
     toc_items: [],
     comments: [

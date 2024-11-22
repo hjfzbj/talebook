@@ -1,16 +1,14 @@
 <template>
     <v-list id='book-comments' density="compact">
         <template v-for="c in comments">
-            <v-list-item class="align-self-start mb-4" :prepend-avatar="c.avatar" append-icon="mdi-thumb-up" :title="c.nickName">
-                <v-list-item-content>{{c.content}}</v-list-item-content>
+            <v-list-item class="pr-0 align-self-start mb-4" :prepend-avatar="c.avatar" append-icon="mdi-thumb-up" :title="c.nickName">
+                    {{c.content}}
                 <v-list-item-subtitle>{{c.level}}楼 * {{c.createTime}} * {{c.ipAddress}}</v-list-item-subtitle>
                 <template v-slot:prepend>
                     <v-avatar class="text-center" :icon="c.avatar"></v-avatar>
                 </template>
                 <template v-slot:append>
-                    <v-icon icon="mdi-thumb-up"></v-icon>
-                    <br></br>
-                    {{c.likeCount}}
+                    <v-btn class="px-0" size="small" variant=plain stacked prepend-icon="mdi-thumb-up">{{c.likeCount}}</v-btn>
                 </template>
             </v-list-item>
 

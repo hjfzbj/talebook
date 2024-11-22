@@ -7,8 +7,8 @@
                     <span>亮度</span>
                 </v-col>
                 <v-col cols="9">
-                    <v-slider hide-details v-model="brightness" max="100" min="1" step=1
-                        @update:modelValue="$emit('update:brightness', this.brightness)"></v-slider>
+                    <v-slider hide-details v-model="opt.brightness" max="100" min="1" step=1
+                        @update:modelValue="$emit('update', opt)"></v-slider>
                 </v-col>
             </v-row>
         </v-list-item>
@@ -22,7 +22,7 @@
                     <v-btn variant="outlined" density="comfortable">A-</v-btn>
                 </v-col>
                 <v-col cols="2">
-                    <span class="d-inline-blockx text-center d-flex">{{ font_size }}</span>
+                    <span class="d-inline-blockx text-center d-flex">{{ opt.font_size }}</span>
                 </v-col>
                 <v-col cols="3">
                     <v-btn variant="outlined" density="comfortable">A+</v-btn>
@@ -37,10 +37,8 @@
                 </v-col>
                 <v-col cols="10">
                     <v-btn-group variant="outlined" divided density="compact">
-                        <v-btn>仿真</v-btn>
-                        <v-btn>平移</v-btn>
-                        <v-btn active>上下</v-btn>
-                        <v-btn>覆盖</v-btn>
+                        <v-btn :active="opt.flow == 'paginated'" @click='$emit("update", opt)'>平移翻页</v-btn>
+                        <v-btn :active="opt.flow == 'scrolled'" @click='$emit("update", opt)'>上下滑动</v-btn>
                     </v-btn-group>
                 </v-col>
             </v-row>
@@ -51,17 +49,8 @@
                 <v-col cols="2">
                     <span density="compact">主题</span>
                 </v-col>
-                <v-col cols="2">
-                    <v-btn @click='$emit("update:theme", "day")' density="compact" icon="mdi-weather-sunny" color="#F6F6F6"></v-btn>
-                </v-col>
-                <v-col cols="2">
-                    <v-btn @click='$emit("update:theme", "eyecare")' density="compact" icon="mdi-eye" color="#D3E3D3"></v-btn>
-                </v-col>
-                <v-col cols="2">
-                    <v-btn @click='$emit("update:theme", "night")' density="compact" icon="mdi-weather-night" color="#4B4B4B"></v-btn>
-                </v-col>
-                <v-col cols="2">
-                    <v-btn @click='$emit("update:theme", "dark")' density="compact" icon="mdi-weather-night" color="#1A1A1A"></v-btn>
+                <v-col cols="2" v-for="item in themes">
+                    <v-btn :active="opt.theme == item.name" @click='opt.theme = item.name; opt.theme_mode = item.mode; $emit("update", opt)' density="compact" :icon="item.icon" :color="item.color"></v-btn>
                 </v-col>
             </v-row>
         </v-list-item>
@@ -74,14 +63,46 @@ export default {
     computed: {
     },
     mounted: function () {
+        this.opt = {
+            flow: this.settings.flow,
+            theme: this.settings.flow,
+            theme_mode: this.settings.theme_mode,
+            font_size: this.settings.font_size,
+            brightness: this.settings.brightness,
+        }
     },
     methods: {
     },
-    props: {
-    },
+    props: ['settings'],
     data: () => ({
-        brightness: 100,
-        font_size: 106,
+        opt: {
+            flow: "scrolled",
+            theme: "eyecare",
+            theme_mode: "day",
+            font_size: 18,
+            brightness: 100,
+        },
+        themes: [{
+            name: "white",
+            mode: "day",
+            color: '#F6F6F6',
+            icon: "mdi-weather-sunny",
+        }, {
+            name: "eyecare",
+            mode: "day",
+            color: '#D3E3D3',
+            icon: "mdi-eye",
+        }, {
+            name: "grey",
+            mode: "night",
+            color: '#4B4B4B',
+            icon: "mdi-weather-night",
+        }, {
+            name: "dark",
+            mode: "night",
+            color: '#1A1A1A',
+            icon: "mdi-candle",
+        } ],
     })
 }
 

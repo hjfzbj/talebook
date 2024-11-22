@@ -1,12 +1,12 @@
 /* 白天模式 */
-.day {
+.white {
   color: #142614;
   background-color: #F6F6F6;
 }
 
 /* 夜晚模式 */
-.night,
-.night * {
+.grey,
+.grey * {
   color: #C3C3C3 !important;
   background-color: #1A1A1A;
 }
