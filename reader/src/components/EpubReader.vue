@@ -179,7 +179,7 @@ export default {
         this.rendition.themes.select('day');
     },
     load_comments: function(section) {
-        // 在rendition加载完成后执行
+      // 在rendition加载完成后执行
         const doc = section.document;
         const paragraphs = doc.getElementsByTagName("p");
         console.log("hook: ", section, section.cfiBase)
@@ -190,51 +190,27 @@ export default {
             //const cfi = section.cfiFromElement(p);
             const cfi = new ePub.CFI(p, section.cfiBase).toString();
             console.log(index, cfi, p.textContent)
-            p.innerHTML = p.innerHTML + "rex";
 
             // 为段落添加唯一ID和CFI属性
             const paragraphId = `p-${section.index}-${index}`;
             p.setAttribute("data-paragraph-id", paragraphId);
             p.setAttribute("data-cfi", cfi);
 
-            // 创建评论图标容器
-            const commentContainer = doc.createElement("span");
-            commentContainer.className = "comment-container";
-            commentContainer.style.cssText = `
-              display: inline-block;
-              margin-left: 5px;
-              cursor: pointer;
-              position: relative;
-            `;
-            
-            // 创建评论图标
-            const commentIcon = doc.createElement("i");
-            commentIcon.innerHTML = "💬";
-            commentIcon.style.cssText = `
-              font-style: normal;
-              opacity: 0.6;
-            `;
-            
+            // 获取当前段落的评论数量
+            var count = Math.floor(Math.random() * 900) + 1;
+
             // 创建评论计数器
             const commentCount = doc.createElement("span");
-            commentCount.className = "comment-count";
-            commentCount.style.cssText = `
-              font-size: 12px;
-              margin-left: 2px;
-            `;
-            
-            // 获取当前段落的评论数量
-            const count = 999;
             commentCount.textContent = count > 0 ? count : "";
+            commentCount.className = "comment-count";
             
-            // 组装评论组件
-            commentContainer.appendChild(commentIcon);
-            commentContainer.appendChild(commentCount);
-            
-            // 将评论组件添加到段落末尾
-            p.appendChild(commentContainer);
-            console.log("append ", p, commentContainer);
+            // 创建评论图标
+            const commentContainer = doc.createElement("div");
+            commentContainer.className = "comment-icon";
 
+            // 将评论组件添加到段落末尾
+            commentContainer.appendChild(commentCount);
+            p.appendChild(commentContainer);
         })
     },
   },
@@ -264,7 +240,7 @@ export default {
     this.init_listeners();
 
     this.book.ready.then( () => {
-        this.rendition.display();
+        this.rendition.display("text/part0007.html");
     })
     this.init_themes();
 
