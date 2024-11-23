@@ -1,5 +1,5 @@
 <template>
-  <v-app full-height>
+  <v-app full-height density="compact">
     <!-- 顶部菜单 -->
     <v-app-bar v-if="active_menu" density="compact" color="primary">
       <template v-slot:prepend> <v-btn icon> <v-icon>mdi-arrow-left</v-icon> </v-btn> </template>
@@ -25,7 +25,7 @@
       <book-toc :meta="book_meta" :toc_items="toc_items" @click:select="on_click_toc"></book-toc>
     </v-bottom-sheet>
 
-    <v-bottom-sheet max-height="90%" v-model="menu_more" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
+    <v-bottom-sheet max-height="90%" v-model="menu_more" contained style="margin-bottom: 56px;" z-index="234">
         <!--
       <book-meta :meta="book_meta"></book-meta>
         -->
@@ -215,7 +215,7 @@ export default {
     },
   },
   mounted: function () {
-    this.book = ePub("/book/");
+    this.book = ePub("/guimi/");
     this.rendition = this.book.renderTo("reader", {
       manager: "continuous",
       flow: this.settings.flow,
@@ -240,7 +240,7 @@ export default {
     this.init_listeners();
 
     this.book.ready.then( () => {
-        this.rendition.display("text/part0007.html");
+        this.rendition.display();
     })
     this.init_themes();
 
@@ -262,9 +262,9 @@ export default {
     rendition: null,
     auto_close: false,
     active_menu: true,
-    menu: "hide",
+    menu: "more",
     menu_toc: false,
-    menu_more: false,
+    menu_more: true,
     menu_settings: false,
     theme_mode: "day",
     toc_items: [],
