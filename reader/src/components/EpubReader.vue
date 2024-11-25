@@ -215,7 +215,7 @@ export default {
     },
   },
   mounted: function () {
-    this.book = ePub("/book/");
+    this.book = ePub("/guimi/");
     this.rendition = this.book.renderTo("reader", {
       manager: "continuous",
       flow: this.settings.flow,
@@ -240,7 +240,7 @@ export default {
     this.init_listeners();
 
     this.book.ready.then( () => {
-        this.rendition.display("text/part0007.html");
+        this.rendition.display();
     })
     this.init_themes();
 
