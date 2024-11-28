@@ -1,6 +1,13 @@
 <template>
     <v-card>
-        <span class="mx-auto my-1">评论列表</span>
+        <v-row>
+            <v-col offset="2" cols="8" class="text-center">
+                <h4 class="mt-3">评论列表</h4>
+                </v-col>
+                <v-col cols="2">
+                    <v-btn variant="plain" icon="mdi-close" @click="$emit('close')" ></v-btn>
+                </v-col>
+        </v-row>  
         <v-divider></v-divider>
     <v-list id='book-comments' density="compact">
         <template v-for="c in comments">
@@ -37,27 +44,11 @@ export default {
     computed: {
     },
     mounted: function () {
-        fetch('/comments.json').then(function(response) {
-            if (!response.ok) {
-                throw new Error('网络请求失败，状态码：' + response.status);
-            }
-            return response.json();
-        })
-        .then( rsp => {
-            this.comments = rsp.data.list;
-            console.log(this.comments);
-        })
-        .catch(function(error) {
-            console.error('请求过程中出现错误：', error);
-        });
     },
     methods: {
     },
-    props: {
-    },
+    props: ["login", "comments"],
     data: () => ({
-        login: false,
-        comments: [],
     })
 }
 

@@ -63,4 +63,11 @@
   font-size: 60%;
   position: relative;
   top: -4px;
+  background-color: inherit;
+}
+
+.comment-count:hover {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
 }

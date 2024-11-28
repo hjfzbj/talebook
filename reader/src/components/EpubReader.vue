@@ -5,6 +5,7 @@
       <template v-slot:prepend> <v-btn icon> <v-icon>mdi-arrow-left</v-icon> </v-btn> </template>
       {{alert_msg}}
       <v-spacer></v-spacer>
+      <v-btn @click="is_login = !is_login" icon="mdi-login"></v-btn>
       <v-btn icon> <v-icon>mdi-dots-vertical</v-icon> </v-btn>
     </v-app-bar>
 
@@ -26,10 +27,7 @@
     </v-bottom-sheet>
 
     <v-bottom-sheet max-height="90%" v-model="menu_more" contained style="margin-bottom: 56px;" z-index="234">
-        <!--
-      <book-meta :meta="book_meta"></book-meta>
-        -->
-        <book-comments></book-comments>
+        <book-comments :login="is_login" :comments="comments" @close="set_menu('hide')"></book-comments>
     </v-bottom-sheet>
 
     <!-- 阅读界面 -->
@@ -180,11 +178,31 @@ export default {
     },
     load_comments: function(section) {
       // 在rendition加载完成后执行
-        const doc = section.document;
-        const paragraphs = doc.getElementsByTagName("p");
         console.log("hook: ", section, section.cfiBase)
 
+        var url = `/summary.json?book=123&cfi=${section.cfiBase}`;
+
+        fetch(url).then( response => {
+          if (!response.ok) {
+                throw new Error('网络请求失败，状态码：' + response.status);
+          }
+          return response.json();
+        })
+        .then( rsp => {
+          this.summary = {};
+          rsp.data.list.forEach( item => {
+            this.summary[item.segmentId] = item;
+          })
+            this.add_comment_icons(section);
+        })
+        .catch(function(error) {
+            console.error('请求过程中出现错误：', error);
+        });
+    },
+    add_comment_icons: function(section) {
         // 为每个段落添加评论图标和计数器
+        const doc = section.document;
+        const paragraphs = doc.getElementsByTagName("p");
         Array.from(paragraphs).forEach((p, index) => {
             // 获取段落的 CFI
             //const cfi = section.cfiFromElement(p);
@@ -192,25 +210,36 @@ export default {
             console.log(index, cfi, p.textContent)
 
             // 为段落添加唯一ID和CFI属性
-            const paragraphId = `p-${section.index}-${index}`;
+            const paragraphId = `p-${section.cfiBase}-${index}`;
             p.setAttribute("data-paragraph-id", paragraphId);
             p.setAttribute("data-cfi", cfi);
 
             // 获取当前段落的评论数量
-            var count = Math.floor(Math.random() * 900) + 1;
+            const state = this.summary[index];
+            const count = state.reviewNum;
+            const is_hot = state.is_hot ? "hot-comment" : "";
 
             // 创建评论计数器
             const commentCount = doc.createElement("span");
             commentCount.textContent = count > 0 ? count : "";
-            commentCount.className = "comment-count";
-            
+            commentCount.className = `comment-count ${is_hot}`;
             // 创建评论图标
             const commentContainer = doc.createElement("div");
-            commentContainer.className = "comment-icon";
+            commentContainer.className = `comment-icon ${is_hot}`;
 
             // 将评论组件添加到段落末尾
             commentContainer.appendChild(commentCount);
             p.appendChild(commentContainer);
+
+            commentContainer.addEventListener('click', (event) => {
+              event.stopPropagation();
+              console.log("点击评论按钮", paragraphId, cfi)
+              fetch('/comments.json').then( rsp => rsp.json() ).then( rsp => {
+                this.comments = rsp.data.list;
+                this.set_menu("more");
+              })
+            });
+
         })
     },
   },
@@ -240,7 +269,7 @@ export default {
     this.init_listeners();
 
     this.book.ready.then( () => {
-        this.rendition.display();
+        this.rendition.display('Text/Chapter_0217.xhtml');
     })
     this.init_themes();
 
@@ -254,28 +283,22 @@ export default {
         theme: "eyecare",
         theme_mode: "day",
         theme_day: "eyecare",
-        theme_night: "night",
+        theme_night: "grey",
     },
+    is_login: true,
     book_title: "",
     book_meta: null,
     alert_msg: "x",
     rendition: null,
     auto_close: false,
     active_menu: true,
-    menu: "more",
+    menu: "hide",
     menu_toc: false,
-    menu_more: true,
+    menu_more: false,
     menu_settings: false,
     theme_mode: "day",
     toc_items: [],
-    comments: [
-      { icon: 'mdi-user', nick: "用户1", text: "这一一条评论", },
-      { icon: 'mdi-user', nick: "用户1", text: "这一一条评论", },
-      { icon: 'mdi-user', nick: "用户1", text: "这一一条评论", },
-      { icon: 'mdi-user', nick: "用户1", text: "这一一条评论", },
-      { icon: 'mdi-user', nick: "用户1", text: "这一一条评论", },
-    ]
-
+    comments: [],
   })
 }
 </script>

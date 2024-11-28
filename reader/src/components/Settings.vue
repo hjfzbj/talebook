@@ -37,8 +37,22 @@
                 </v-col>
                 <v-col cols="10">
                     <v-btn-group variant="outlined" divided density="compact">
-                        <v-btn :active="opt.flow == 'paginated'" @click='$emit("update", opt)'>平移翻页</v-btn>
-                        <v-btn :active="opt.flow == 'scrolled'" @click='$emit("update", opt)'>上下滑动</v-btn>
+                        <v-btn :active="opt.flow == 'paginated'" @click='$emit("update", opt)'>左右点击翻页</v-btn>
+                        <v-btn :active="opt.flow == 'scrolled'" @click='$emit("update", opt)'>上下滑动翻页</v-btn>
+                    </v-btn-group>
+                </v-col>
+            </v-row>
+        </v-list-item>
+
+        <v-list-item class="my-2">
+            <v-row style="margin-bottom: 1px">
+                <v-col cols="2">
+                    <span density="compact">章评</span>
+                </v-col>
+                <v-col cols="10">
+                    <v-btn-group variant="outlined" divided density="compact">
+                        <v-btn :active="opt.flow == 'paginated'" @click='$emit("update", opt)'>开启</v-btn>
+                        <v-btn :active="opt.flow == 'scrolled'" @click='$emit("update", opt)'>关闭</v-btn>
                     </v-btn-group>
                 </v-col>
             </v-row>
@@ -50,11 +64,13 @@
                     <span density="compact">主题</span>
                 </v-col>
                 <v-col cols="2" v-for="item in themes">
-                    <v-btn :active="opt.theme == item.name" @click='opt.theme = item.name; opt.theme_mode = item.mode; $emit("update", opt)' density="compact" :icon="item.icon" :color="item.color"></v-btn>
+                    <v-btn :active="opt.theme == item.name" density="compact" :icon="item.icon" :color="item.color"
+                        @click='opt.theme = item.name; opt.theme_mode = item.mode; $emit("update", opt)'></v-btn>
                 </v-col>
             </v-row>
         </v-list-item>
-    </v-list>
+
+</v-list>
 </template>
 
 <script>
