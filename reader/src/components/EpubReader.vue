@@ -3,38 +3,62 @@
     <!-- 顶部菜单 -->
     <v-app-bar v-if="active_menu" density="compact" color="primary">
       <template v-slot:prepend> <v-btn icon> <v-icon>mdi-arrow-left</v-icon> </v-btn> </template>
-      {{alert_msg}}
+      {{ alert_msg }}
       <v-spacer></v-spacer>
-      <v-btn @click="is_login = !is_login" icon="mdi-login"></v-btn>
+      <v-btn @click="is_login = !is_login" :icon="is_login ? 'mdi-account-check' : 'mdi-account-plus'"></v-btn>
       <v-btn icon> <v-icon>mdi-dots-vertical</v-icon> </v-btn>
     </v-app-bar>
 
-
     <!-- 底部菜单 -->
     <v-bottom-navigation :active="active_menu" color="primary" z-index="2599">
-      <v-btn value="toc" @click="set_menu('toc')"> <v-icon>mdi-book-open-variant-outline</v-icon> <span>目录</span> </v-btn>
-      <v-btn value="theme" @click="switch_theme"> <v-icon>{{ switch_theme_icon }}</v-icon> <span>{{ switch_theme_text }}</span> </v-btn>
-      <v-btn value="setting" @click="set_menu('settings')"> <v-icon>mdi-cog</v-icon> <span>设置</span> </v-btn>
-      <v-btn value="more" @click="set_menu('more')"> <v-icon>mdi-comment-text-outline</v-icon> <span>评论</span> </v-btn>
+      <v-btn value="toc" @click="set_menu('toc')">
+        <v-icon>mdi-book-open-variant-outline</v-icon>
+        <span>目录</span>
+      </v-btn>
+      <v-btn value="theme" @click="switch_theme">
+        <v-icon>{{ switch_theme_icon }}</v-icon>
+        <span>{{ switch_theme_text }}</span>
+      </v-btn>
+      <v-btn value="setting" @click="set_menu('settings')">
+        <v-icon>mdi-cog</v-icon>
+        <span>设置</span>
+      </v-btn>
+      <v-btn value="more" @click="set_menu('more')">
+        <v-icon>mdi-comment-text-outline</v-icon>
+        <span>评论</span>
+      </v-btn>
     </v-bottom-navigation>
 
-    <v-bottom-sheet max-height="90%" v-model="menu_settings" contained persistent style="margin-bottom: 56px;" z-index="234">
+    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_settings" contained persistent z-index="234">
       <settings :settings="settings" @update="update_settings"></settings>
     </v-bottom-sheet>
 
-    <v-bottom-sheet max-height="90%" v-model="menu_toc" contained close-on-content-click style="margin-bottom: 56px;" z-index="234">
+    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_toc" contained close-on-content-click z-index="234">
       <book-toc :meta="book_meta" :toc_items="toc_items" @click:select="on_click_toc"></book-toc>
     </v-bottom-sheet>
 
-    <v-bottom-sheet max-height="90%" v-model="menu_more" contained style="margin-bottom: 56px;" z-index="234">
-        <book-comments :login="is_login" :comments="comments" @close="set_menu('hide')"></book-comments>
+    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_more" contained z-index="234">
+      <book-comments :login="is_login" :comments="comments" @close="set_menu('hide')"></book-comments>
     </v-bottom-sheet>
+
+    <!-- 浮动工具栏 -->
+    <div id="comments-toolbar" :style="`left: ${toolbar_left}px; top: ${toolbar_top}px`">
+      <v-toolbar density="compact" border dense floating elevation="10" rounded>
+        <v-btn @click="on_click_toolbar_comments">发段评</v-btn>
+        <v-divider vertical></v-divider>
+        <v-btn>从这里听</v-btn>
+        <v-divider vertical></v-divider>
+        <v-btn>复制</v-btn>
+        <v-divider vertical></v-divider>
+        <v-btn>反馈</v-btn>
+      </v-toolbar>
+    </div>
 
     <!-- 阅读界面 -->
     <v-main class="pa-0 fill-height">
-        <div id="book-container" class="fill-height">
-            <div id="reader" class="fill-height"></div>
-        </div>
+      <div id="book-container" class="fill-height">
+        <div id="reader" class="fill-height"></div>
+      </div>
     </v-main>
 
   </v-app>
@@ -55,44 +79,46 @@ export default {
   },
   methods: {
     switch_theme: function () {
-        const mode = this.settings.theme_mode;
-        if ( mode == "day" ) {
-            this.settings.theme_mode = "night";
-            this.rendition.themes.select(this.settings.theme_night);
-        } else {
-            this.settings.theme_mode = "day";
-            this.rendition.themes.select(this.settings.theme_day);
-        }
+      const mode = this.settings.theme_mode;
+      if (mode == "day") {
+        this.settings.theme_mode = "night";
+        this.rendition.themes.select(this.settings.theme_night);
+      } else {
+        this.settings.theme_mode = "day";
+        this.rendition.themes.select(this.settings.theme_day);
+      }
     },
-    set_menu: function(target) {
-        if ( this.menu == target ) {
-            this.menu = 'hide';
-        } else {
-            this.menu = target;
-        }
-        console.log("set menu = ", this.menu);
-        this.menu_toc = false;
-        this.menu_more = false;
-        this.menu_settings = false;
-        if ( this.menu != 'hide' ) {
-            this["menu_" + target] = true;
-        }
+    set_menu: function (target) {
+      if (this.menu == target) {
+        this.menu = 'hide';
+      } else {
+        this.menu = target;
+      }
+      console.log("set menu = ", this.menu);
+      this.active_menu = true;
+      this.menu_toc = false;
+      this.menu_more = false;
+      this.menu_settings = false;
+      if (this.menu != 'hide') {
+        this["menu_" + target] = true;
+      }
     },
     update_settings: function (opt) {
-        for ( const key in opt ) {
-            this.settings[key] = opt[key];
-        }
-        // 更新主题设定
-        const mode = opt["theme_mode"];
-        const theme_key = "theme_" + mode;
-        this.settings[theme_key] = this.settings.theme;
-        this.rendition.themes.select(this.settings.theme);
+      for (const key in opt) {
+        this.settings[key] = opt[key];
+      }
+      // 更新主题设定
+      const mode = opt["theme_mode"];
+      const theme_key = "theme_" + mode;
+      this.settings[theme_key] = this.settings.theme;
+      this.rendition.themes.select(this.settings.theme);
     },
     on_click_toc: function (item) {
       console.log(item);
       this.rendition.display(item.id);
     },
     on_click_content: function (event) {
+      this.hide_toolbar();
       const viewer = document.getElementById('reader');
       const width = viewer.offsetWidth;
       const x = event.clientX % viewer.offsetWidth;
@@ -112,16 +138,56 @@ export default {
         this.active_menu = !this.active_menu;
       }
     },
-    on_keyup: function(e) {
-        const c = e.keyCode || e.which;
-        // Left & Up
-        if (c == 37 || c == 38) {
-            this.rendition.prev();
-        }
-        // Right & Down
-        if (c == 39 || c == 40) {
-            this.rendition.next();
-        }
+    on_select_content: function (cfiRange, contents) {
+      console.log("on selectd", cfiRange, contents)
+      var cfi = cfiRange.replace(/\[epub[^)]*\)\]/, '').replace(/,[^)]*/, '');
+      console.log("get cfi = ", cfi)
+
+      var p = contents.document.getElementById(cfi);
+      // p.style.textDecoration = "underline";
+
+      // 选中全部文字
+      /*
+      const range = contents.document.createRange();
+      range.selectNodeContents(p);
+      const selection = contents.window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      */
+
+
+      // 把 toolbar 移动到段落附近
+      const rect = p.getBoundingClientRect();
+      const toolbar = document.getElementById('comments-toolbar');
+      this.toolbar_left = (rect.width - toolbar.offsetWidth) / 2;
+      if (rect.top >= (toolbar.offsetHeight + 64)) {
+        this.toolbar_top = (rect.top - toolbar.offsetHeight - 12);
+      } else {
+        this.toolbar_top = (rect.bottom + 12);
+      }
+
+      this.selected_cfi = cfi;
+      this.selected_cfi_base = contents.cfiBase;
+      this.selected_segment_id = p.getAttribute("data-segment-id");
+
+      // this.book.getRange(cfiRange).then((range) => {})
+
+    },
+    on_click_toolbar_comments: function () {
+      console.log("点击发表评论按钮", this.selected_cfi_base, this.selected_segment_id)
+      this.hide_toolbar();
+      this.show_selected_comments(this.selected_cfi_base, this.selected_cfi, this.selected_segment_id);
+    },
+    on_keyup: function (e) {
+      const c = e.keyCode || e.which;
+      // Left & Up
+      if (c == 37 || c == 38) {
+        this.rendition.prev();
+      }
+      // Right & Down
+      if (c == 39 || c == 40) {
+        this.rendition.next();
+      }
     },
     show_click: function (x, y, width) {
       console.log("click at", x, y, width)
@@ -139,108 +205,104 @@ export default {
         document.body.removeChild(dotDiv);
       }, 2000);
     },
-    init_listeners: function() {
-        document.addEventListener('keyup', this.on_keyup, false);
-        this.rendition.on('keyup', this.on_keyup, false);
-        this.rendition.on('click', this.on_click_content, false);
-        this.rendition.hooks.content.register( this.load_comments);
+    init_listeners: function () {
+      document.addEventListener('keyup', this.on_keyup, false);
+      this.rendition.on('keyup', this.on_keyup, false);
+      this.rendition.on('click', this.on_click_content, false);
+      this.rendition.on('selected', this.on_select_content, false);
+      this.rendition.hooks.content.register(this.load_comments);
 
-        var signals = ['click', 'selected', 'touchstart', 'touchend', 'touchmove'];
-        var signals = ["added", "attach", "attached", "axis", "changed", "detach", "displayed", "displayerror", "expand", "hidden", "layout", "linkClicked", "loaderror", "locationChanged", "markClicked", "openFailed", "orientationchange", "relocated", "removed", "rendered", "resize", "resized", "scroll", "scrolled", "selected", "selectedRange", "shown", "started", "updated", "writingMode", "mouseup", "mousedown", "mousemove", "click", "touchend", "touchstart", "touchmove"]
-        signals.forEach( sig => {
-            this.rendition.on(sig, (e) => {
-                this.alert_msg = sig;
-                console.log(sig, e);
-            }, false)
-        });
+      var signals = ['click', 'selected', 'touchstart', 'touchend', 'touchmove'];
+      var signals = ["added", "attach", "attached", "axis", "changed", "detach", "displayed", "displayerror", "expand", "hidden", "layout", "linkClicked", "loaderror", "locationChanged", "markClicked", "openFailed", "orientationchange", "relocated", "removed", "rendered", "resize", "resized", "scroll", "scrolled", "selected", "selectedRange", "shown", "started", "updated", "writingMode", "mouseup", "mousedown", "mousemove", "click", "touchend", "touchstart", "touchmove"]
+      signals.forEach(sig => {
+        this.rendition.on(sig, (e) => {
+          this.alert_msg = sig;
+          console.log(sig, e);
+        }, false)
+      });
 
     },
-    init_themes: function() {
-        this.rendition.themes.register("day", "themes.css");
-        this.rendition.themes.register("dark", "themes.css");
-        this.rendition.themes.register("night", "themes.css");
-        this.rendition.themes.register("brown", "themes.css");
-        this.rendition.themes.register("eyecare", "themes.css");
+    init_themes: function () {
+      this.rendition.themes.register("day", "themes.css");
+      this.rendition.themes.register("dark", "themes.css");
+      this.rendition.themes.register("night", "themes.css");
+      this.rendition.themes.register("brown", "themes.css");
+      this.rendition.themes.register("eyecare", "themes.css");
 
-        /*
-        this.rendition.themes.default({
-          h2: {
-            'font-size': '32px',
-            color: 'purple'
-          },
-          p: {
-            "margin": '10px'
-          }
-        });
-        */
-
-        this.rendition.themes.select('day');
+      this.rendition.themes.select(this.settings.theme_day);
     },
-    load_comments: function(section) {
+    load_comments: function (section) {
       // 在rendition加载完成后执行
-        console.log("hook: ", section, section.cfiBase)
+      console.log("hook: ", section, section.cfiBase)
 
-        var url = `/summary.json?book=123&cfi=${section.cfiBase}`;
+      var url = `/summary.json?book=123&cfi=${section.cfiBase}`;
 
-        fetch(url).then( response => {
-          if (!response.ok) {
-                throw new Error('网络请求失败，状态码：' + response.status);
-          }
-          return response.json();
+      fetch(url).then(response => {
+        if (!response.ok) {
+          throw new Error('网络请求失败，状态码：' + response.status);
+        }
+        return response.json();
+      }).then(rsp => {
+        this.summary = {};
+        rsp.data.list.forEach(item => {
+          this.summary[item.segmentId] = item;
         })
-        .then( rsp => {
-          this.summary = {};
-          rsp.data.list.forEach( item => {
-            this.summary[item.segmentId] = item;
-          })
-            this.add_comment_icons(section);
-        })
-        .catch(function(error) {
-            console.error('请求过程中出现错误：', error);
+        this.add_comment_icons(section);
+      }).catch(function (error) {
+          console.error('请求过程中出现错误：', error);
         });
     },
-    add_comment_icons: function(section) {
-        // 为每个段落添加评论图标和计数器
-        const doc = section.document;
-        const paragraphs = doc.getElementsByTagName("p");
-        Array.from(paragraphs).forEach((p, index) => {
-            // 获取段落的 CFI
-            //const cfi = section.cfiFromElement(p);
-            const cfi = new ePub.CFI(p, section.cfiBase).toString();
-            console.log(index, cfi, p.textContent)
+    hide_toolbar: function () {
+      this.toolbar_left = -999;
+    },
+    show_selected_comments: function (cfiBase, cfi, segment_id) {
+      const url = `/comments.json?base=${cfiBase}&segment=${segment_id}&cfi=${cfi}`;
+      fetch(url).then(rsp => rsp.json()).then(rsp => {
+        this.comments = rsp.data.list;
+        this.set_menu("more");
+      })
+    },
+    add_comment_icons: function (section) {
+      // 为每个段落添加评论图标和计数器
+      const doc = section.document;
+      const paragraphs = doc.getElementsByTagName("p");
+      Array.from(paragraphs).forEach((p, index) => {
+        // 获取段落的 CFI
+        //const cfi = section.cfiFromElement(p);
+        const cfi = new ePub.CFI(p, section.cfiBase).toString();
+        // console.log(index, cfi, p.textContent)
 
-            // 为段落添加唯一ID和CFI属性
-            const paragraphId = `p-${section.cfiBase}-${index}`;
-            p.setAttribute("data-paragraph-id", paragraphId);
-            p.setAttribute("data-cfi", cfi);
+        // 为段落添加唯一ID和CFI属性
+        const paragraphId = `p-${section.cfiBase}-${index}`;
+        p.setAttribute("data-segment-id", index);
+        p.setAttribute("data-paragraph-id", paragraphId);
+        p.setAttribute("data-cfi", cfi);
+        p.setAttribute("id", cfi);
 
-            // 获取当前段落的评论数量
-            const state = this.summary[index];
-            const count = state.reviewNum;
-            const is_hot = state.is_hot ? "hot-comment" : "";
+        // 获取当前段落的评论数量
+        const state = this.summary[index];
+        const count = state.reviewNum;
+        const is_hot = state.is_hot ? "hot-comment" : "";
 
-            // 创建评论计数器
-            const commentCount = doc.createElement("span");
-            commentCount.textContent = count > 0 ? count : "";
-            commentCount.className = `comment-count ${is_hot}`;
-            // 创建评论图标
-            const commentContainer = doc.createElement("div");
-            commentContainer.className = `comment-icon ${is_hot}`;
+        // 创建评论计数器
+        const commentCount = doc.createElement("span");
+        commentCount.textContent = count > 0 ? count : "";
+        commentCount.className = `comment-count ${is_hot}`;
+        // 创建评论图标
+        const commentContainer = doc.createElement("div");
+        commentContainer.className = `comment-icon ${is_hot}`;
 
-            // 将评论组件添加到段落末尾
-            commentContainer.appendChild(commentCount);
-            p.appendChild(commentContainer);
+        // 将评论组件添加到段落末尾
+        commentContainer.appendChild(commentCount);
+        p.appendChild(commentContainer);
 
-            commentContainer.addEventListener('click', (event) => {
-              event.stopPropagation();
-              console.log("点击评论按钮", paragraphId, cfi)
-              fetch('/comments.json').then( rsp => rsp.json() ).then( rsp => {
-                this.comments = rsp.data.list;
-                this.set_menu("more");
-              })
-            });
+        commentContainer.addEventListener('click', (event) => {
+          event.stopPropagation();
+          console.log("点击评论按钮", paragraphId, section.cfiBase, cfi)
+          this.show_selected_comments(section.cfiBase, cfi, index);
+        });
 
-        })
+      })
     },
   },
   mounted: function () {
@@ -254,8 +316,8 @@ export default {
     });
 
     this.book.loaded.metadata.then(metadata => {
-        console.log(metadata);
-        this.book_meta = metadata;
+      console.log(metadata);
+      this.book_meta = metadata;
       this.book_title = metadata.title;
     });
 
@@ -267,23 +329,23 @@ export default {
     window.rend = this.rendition
 
     this.init_listeners();
-
-    this.book.ready.then( () => {
-        this.rendition.display('Text/Chapter_0217.xhtml');
-    })
     this.init_themes();
+
+    this.book.ready.then(() => {
+      this.rendition.display('Text/Chapter_0217.xhtml');
+    })
 
   },
   data: () => ({
     book: null,
     settings: {
-        flow: "paginated",
-        font_size: 18,
-        brightness: 100,
-        theme: "eyecare",
-        theme_mode: "day",
-        theme_day: "eyecare",
-        theme_night: "grey",
+      flow: "paginated",
+      font_size: 18,
+      brightness: 100,
+      theme: "eyecare",
+      theme_mode: "day",
+      theme_day: "eyecare",
+      theme_night: "grey",
     },
     is_login: true,
     book_title: "",
@@ -299,6 +361,12 @@ export default {
     theme_mode: "day",
     toc_items: [],
     comments: [],
+    toolbar_left: -999,
+    toolbar_top: 0,
+    selected_segment_id: 0,
+    selected_cfi_base: "",
+    selected_cfi: "",
+
   })
 }
 </script>
@@ -311,6 +379,13 @@ export default {
   background-color: rgba(255, 0, 0, 0.6);
   position: absolute;
   transition: opacity 1s ease-out;
+  z-index: 999;
+}
+
+#comments-toolbar {
+  position: absolute;
+  left: 0;
+  top: 0;
   z-index: 999;
 }
 </style>
