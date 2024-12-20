@@ -79,11 +79,11 @@ nginx -t || exit 1
 
 echo
 echo "====== Sync DB Scheme ===="
-gosu talebook:talebook /var/www/talebook/server.py --syncdb
+gosu talebook:talebook /var/www/talebook/server.py --syncdb || exit 2
 
 echo
 echo "====== Update Server Config ===="
-gosu talebook:talebook /var/www/talebook/server.py --update-config
+gosu talebook:talebook /var/www/talebook/server.py --update-config || exit 3
 
 echo
 echo "====== Start Server ===="

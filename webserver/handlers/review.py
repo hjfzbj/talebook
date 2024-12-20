@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+import logging
 import datetime
 from gettext import gettext as _
 
@@ -19,6 +20,8 @@ class ReviewSummary(BaseHandler):
     def get(self):
         bid = int(self.get_argument("bid", "0").strip())
         cfi_base = self.get_argument("cfi_base", "").strip()
+        logging.error(bid)
+        logging.error(cfi_base)
         if not cfi_base or not bid:
             return {"err": "params.invalid", "msg": _(u"参数错误")}
         q = self.session.query(Review.segment_id, func.count().label('cnt'))
@@ -43,7 +46,7 @@ class ReviewList(BaseHandler):
         if not cfi_base or not bid or not segment_id:
             return {"err": "params.invalid", "msg": _(u"参数错误")}
         
-        q = self.session.query(Review).fliter(
+        q = self.session.query(Review).filter(
             Review.bid == bid,
             Review.cfi_base == cfi_base,
             Review.segment_id == segment_id)
@@ -142,9 +145,9 @@ class ReviewGetBook(BaseHandler):
     @js
     def get(self):
         title = self.get_argument("title", "").strip().lower()
-        calibre_id = int(self.get_argument("calibre_id", 0).strip())
+        calibre_id = int(self.get_argument("calibre_id", "0").strip())
 
-        if not title or not calibre_id:
+        if not title:
             return {"err": "params.invalid", "msg": _(u"参数错误")}
 
         row = self.session.query(ReviewBook).filter(ReviewBook.calibre_id == calibre_id).first()

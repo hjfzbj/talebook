@@ -336,9 +336,9 @@ class Review(Base, SQLAlchemyMixin):
     create_time = Column(DateTime)
     update_time = Column(DateTime)
 
-    user = Column(Integer, ForeignKey('readers.id'), lazy='select')
-    root = Column(Integer, ForeignKey('reviews.id'), lazy='select')
-    quote = Column(Integer, ForeignKey('reviews.id'), lazy='select')
+    user = Column(Integer, ForeignKey('readers.id'))
+    root = Column(Integer, ForeignKey('reviews.id'))
+    quote = Column(Integer, ForeignKey('reviews.id'))
 
     #user = relationship(Reader, primaryjoin=user_id == Reader.id)
     #quote = relationship("Review", primaryjoin="quote_id == Review.id")
