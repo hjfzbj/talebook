@@ -138,11 +138,11 @@ class ReviewMe(BaseHandler):
         return {"err": "ok", "data": {"list": data}}
 
 
-class ReviewBook(BaseHandler):
+class ReviewGetBook(BaseHandler):
     @js
     def get(self):
         title = self.get_argument("title", "").strip().lower()
-        calibre_id = self.get_argument("calibre_id", "").strip()
+        calibre_id = int(self.get_argument("calibre_id", 0).strip())
 
         if not title or not calibre_id:
             return {"err": "params.invalid", "msg": _(u"参数错误")}
@@ -169,7 +169,7 @@ class ReviewBook(BaseHandler):
 
 def routes():
     return [
-        (r"/api/review/book", ReviewBook),
+        (r"/api/review/book", ReviewGetBook),
         (r"/api/review/summary", ReviewSummary),
         (r"/api/review/list", ReviewList),
         (r"/api/review/add", ReviewAdd),
