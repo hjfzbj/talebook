@@ -24,9 +24,17 @@
         <span>设置</span>
       </v-btn>
       <v-btn value="more" @click="set_menu('more')">
+        <v-badge color="error" content="12">
+          <v-icon>mdi-account-circle-outline</v-icon>
+        </v-badge>
+        <span>用户</span>
+      </v-btn>
+      <!--
+      <v-btn value="more" @click="set_menu('more')">
         <v-icon>mdi-comment-text-outline</v-icon>
         <span>评论</span>
       </v-btn>
+      -->
     </v-bottom-navigation>
 
     <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_settings" contained persistent z-index="234">
@@ -37,8 +45,13 @@
       <book-toc :meta="book_meta" :toc_items="toc_items" @click:select="on_click_toc"></book-toc>
     </v-bottom-sheet>
 
-    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_more" contained z-index="234">
-      <book-comments :login="is_login" :comments="comments" @close="set_menu('hide')"></book-comments>
+    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_more" contained persistent z-index="234">
+      <guest v-if="!is_login"></guest>
+      <user v-else :messages="comments"></user>
+    </v-bottom-sheet>
+
+    <v-bottom-sheet class="" max-height="90%" v-model="menu_comments" contained style="z-index: 2600">
+      <book-comments :login="is_login" :comments="comments" @click:add_review="on_add_review"></book-comments>
     </v-bottom-sheet>
 
     <!-- 浮动工具栏 -->
@@ -123,7 +136,7 @@ export default {
       const width = viewer.offsetWidth;
       const x = event.clientX % viewer.offsetWidth;
       const y = event.clientY % viewer.offsetHeight;
-      // this.show_click(x, y, width)
+      this.debug_click(x, y, width)
 
       if (x < width / 3) {
         // 点击左侧，往前翻页
@@ -189,8 +202,10 @@ export default {
         this.rendition.next();
       }
     },
-    show_click: function (x, y, width) {
-      console.log("click at", x, y, width)
+    debug_click: function (x, y, width) {
+      console.log("click at", x, y, width);
+      if (!this.is_debug_click) return;
+
       x = x - 10;
       y = y - 10;
       const dotDiv = document.createElement('div');
@@ -211,7 +226,10 @@ export default {
       this.rendition.on('click', this.on_click_content, false);
       this.rendition.on('selected', this.on_select_content, false);
       this.rendition.hooks.content.register(this.load_comments);
-
+      this.debug_signals();
+    },
+    debug_signals: function () {
+      if (!this.is_debug_signal) return;
       var signals = ['click', 'selected', 'touchstart', 'touchend', 'touchmove'];
       var signals = ["added", "attach", "attached", "axis", "changed", "detach", "displayed", "displayerror", "expand", "hidden", "layout", "linkClicked", "loaderror", "locationChanged", "markClicked", "openFailed", "orientationchange", "relocated", "removed", "rendered", "resize", "resized", "scroll", "scrolled", "selected", "selectedRange", "shown", "started", "updated", "writingMode", "mouseup", "mousedown", "mousemove", "click", "touchend", "touchstart", "touchmove"]
       signals.forEach(sig => {
@@ -220,22 +238,46 @@ export default {
           console.log(sig, e);
         }, false)
       });
-
     },
     init_themes: function () {
-      this.rendition.themes.register("day", "themes.css");
+      this.rendition.themes.register("white", "themes.css");
       this.rendition.themes.register("dark", "themes.css");
-      this.rendition.themes.register("night", "themes.css");
+      this.rendition.themes.register("grey", "themes.css");
       this.rendition.themes.register("brown", "themes.css");
       this.rendition.themes.register("eyecare", "themes.css");
 
       this.rendition.themes.select(this.settings.theme_day);
     },
+    hide_toolbar: function () {
+      this.toolbar_left = -999;
+    },
+    add_review: function (content) {
+      const review = {
+        bid: this.book_id,
+        cfi: this.cfi,
+        cfi_base: this.cfi_base,
+        segment_id: this.segment_id,
+      }
+      const url = `/api/review/add`;
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(review),
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error('网络请求失败，状态码：' + response.status);
+        }
+        return response.json();
+      });
+    },
     load_comments: function (section) {
       // 在rendition加载完成后执行
       console.log("hook: ", section, section.cfiBase)
 
-      var url = `/summary.json?book=123&cfi=${section.cfiBase}`;
+      var url = `/api/review/summary?bid=${this.review_bid}&cfi=${section.cfiBase}`;
 
       fetch(url).then(response => {
         if (!response.ok) {
@@ -249,17 +291,18 @@ export default {
         })
         this.add_comment_icons(section);
       }).catch(function (error) {
-          console.error('请求过程中出现错误：', error);
-        });
-    },
-    hide_toolbar: function () {
-      this.toolbar_left = -999;
+        console.error('请求过程中出现错误：', error);
+      });
     },
     show_selected_comments: function (cfiBase, cfi, segment_id) {
-      const url = `/comments.json?base=${cfiBase}&segment=${segment_id}&cfi=${cfi}`;
+      const url = `/api/review/list?bid=${this.review_bid}&base=${cfiBase}&segment=${segment_id}&cfi=${cfi}`;
       fetch(url).then(rsp => rsp.json()).then(rsp => {
         this.comments = rsp.data.list;
-        this.set_menu("more");
+        this.menu_comments = true;
+        this.cfi_base = cfiBase;
+        this.cfi = cfi;
+        this.segment_id = segment_id;
+        // this.set_menu("comments");
       })
     },
     add_comment_icons: function (section) {
@@ -319,6 +362,9 @@ export default {
       console.log(metadata);
       this.book_meta = metadata;
       this.book_title = metadata.title;
+      fetch(`/api/review/book?title=${this.book_title}`).then(rsp => rsp.json()).then(rsp => {
+        this.review_bid = rsp.data.id;
+      })
     });
 
     // 加载目录
@@ -342,14 +388,16 @@ export default {
       flow: "paginated",
       font_size: 18,
       brightness: 100,
-      theme: "eyecare",
+      theme: "white",
       theme_mode: "day",
-      theme_day: "eyecare",
+      theme_day: "white",
       theme_night: "grey",
     },
+    server: "http://localhost/api/",
     is_login: true,
     book_title: "",
     book_meta: null,
+    review_bid: 0,
     alert_msg: "x",
     rendition: null,
     auto_close: false,
@@ -358,6 +406,7 @@ export default {
     menu_toc: false,
     menu_more: false,
     menu_settings: false,
+    menu_comments: false,
     theme_mode: "day",
     toc_items: [],
     comments: [],
@@ -366,7 +415,8 @@ export default {
     selected_segment_id: 0,
     selected_cfi_base: "",
     selected_cfi: "",
-
+    is_debug_signal: true,
+    is_debug_click: false,
   })
 }
 </script>

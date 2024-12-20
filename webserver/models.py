@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import datetime
+import enum
 import hashlib
 import logging
 import time
@@ -10,7 +11,7 @@ import os
 from gettext import gettext as _
 
 from social_sqlalchemy.storage import JSONType, SQLAlchemyMixin
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Enum
 from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.orm import relationship, declarative_base
 
@@ -309,6 +310,67 @@ class ScanFile(Base, SQLAlchemyMixin):
         self.status = self.NEW
         self.create_time = datetime.datetime.now()
         self.update_time = datetime.datetime.now()
+
+
+class ReviewType(enum.Enum):
+    comment = 3
+    like = 1
+    dislike = 2
+
+
+class ReviewStatus(enum.Enum):
+    unread = 1
+    read = 2
+    deleted = 3
+
+
+class Review(Base, SQLAlchemyMixin):
+    __tablename__ = "reviews"
+    id = Column(Integer, primary_key=True)
+    book = Column(String(255), default="")
+    user = Column(Integer, ForeignKey('readers.id'))
+    cfi = Column(String(255), default="")
+    cfi_base = Column(String(255), default="")
+    segment_id = Column(Integer, default=0)
+    type = Column(Enum(ReviewType))
+    content = Column(String(1024), default="")
+    create_time = Column(DateTime)
+    update_time = Column(DateTime)
+
+    user_id = Column(Integer, ForeignKey('readers.id'))
+    root_id = Column(Integer, ForeignKey('reviews.id'))
+    quote_id = Column(Integer, ForeignKey('reviews.id'))
+
+    user = relationship(Reader, primaryjoin=user_id == Reader.id)
+    quote = relationship("Review", primaryjoin="quote_id == Review.id")
+    root = relationship("Review", primaryjoin="root_id == Review.id")
+
+    like_count = Column(Integer, default=0)
+    dislike_count = Column(Integer, default=0)
+
+    def to_full_dict(self):
+        row = self
+        d = row.to_dict()
+        d['userId']  = row.user.id
+        d['avatar'] = row.user.avatar
+        d['nickName'] = row.user.name
+        if row.quote:
+            d['quoteReviewId'] = row.quote.id
+            d['quoteContent'] = row.quote.content
+            d['quoteUserId'] = row.quote.user.id
+            d['quoteNickName'] = row.quote.user.name
+        d['rootReviewId'] = row.root.id
+        d['isSelf'] = row.user.id == self.current_user.id
+        d['ipAddress'] = self.request.remote_ip
+        return d
+
+
+class ReviewBook(Base, SQLAlchemyMixin):
+    __tablename__ = "review_books"
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), default="")
+    alias = Column(String(5120), default="")
+    calibre_id = Column(Integer, default=0)
 
 
 def user_syncdb(engine):

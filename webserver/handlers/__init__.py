@@ -10,6 +10,7 @@ def routes():
     from . import opds
     from . import admin
     from . import scan
+    from . import review
 
     routes = []
     routes += admin.routes()
@@ -18,5 +19,6 @@ def routes():
     routes += book.routes()
     routes += user.routes()
     routes += meta.routes()
+    routes += review.routes()
     routes += files.routes()
     return routes
