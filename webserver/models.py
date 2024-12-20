@@ -327,7 +327,7 @@ class ReviewStatus(enum.Enum):
 class Review(Base, SQLAlchemyMixin):
     __tablename__ = "reviews"
     id = Column(Integer, primary_key=True)
-    book = Column(String(255), default="")
+    bid = Column(String(255), default="")
     cfi = Column(String(255), default="")
     cfi_base = Column(String(255), default="")
     segment_id = Column(Integer, default=0)
@@ -336,9 +336,9 @@ class Review(Base, SQLAlchemyMixin):
     create_time = Column(DateTime)
     update_time = Column(DateTime)
 
-    user = Column(Integer, ForeignKey('readers.id'))
-    root = Column(Integer, ForeignKey('reviews.id'))
-    quote = Column(Integer, ForeignKey('reviews.id'))
+    user = Column(Integer, ForeignKey('readers.id'), lazy='select')
+    root = Column(Integer, ForeignKey('reviews.id'), lazy='select')
+    quote = Column(Integer, ForeignKey('reviews.id'), lazy='select')
 
     #user = relationship(Reader, primaryjoin=user_id == Reader.id)
     #quote = relationship("Review", primaryjoin="quote_id == Review.id")

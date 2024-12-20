@@ -17,12 +17,12 @@ class ReviewSummary(BaseHandler):
 
     @js
     def get(self):
+        bid = int(self.get_argument("bid", "0").strip())
         cfi_base = self.get_argument("cfi_base", "").strip()
-        title = self.get_argument("title", "").strip().lower()
-        if not cfi_base or not title:
+        if not cfi_base or not bid:
             return {"err": "params.invalid", "msg": _(u"参数错误")}
         q = self.session.query(Review.segment_id, func.count().label('cnt'))
-        q = q.filter(Review.title == title).group_by(Review.segment_id)
+        q = q.filter(Review.bid == bid).group_by(Review.segment_id)
 
         data = []
         for row in q.all():
@@ -37,14 +37,14 @@ class ReviewList(BaseHandler):
 
     @js
     def get(self):
+        bid = int(self.get_argument("bid", "0").strip())
         cfi_base = self.get_argument("cfi_base", "").strip()
-        title = self.get_argument("title", "").strip().lower()
         segment_id = self.get_argument("segment_id", "").strip()
-        if not cfi_base or not title or not segment_id:
+        if not cfi_base or not bid or not segment_id:
             return {"err": "params.invalid", "msg": _(u"参数错误")}
         
         q = self.session.query(Review).fliter(
-            Review.title == title,
+            Review.bid == bid,
             Review.cfi_base == cfi_base,
             Review.segment_id == segment_id)
 
