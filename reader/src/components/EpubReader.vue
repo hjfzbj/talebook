@@ -24,9 +24,10 @@
         <span>设置</span>
       </v-btn>
       <v-btn value="more" @click="set_menu('more')">
-        <v-badge color="error" content="12">
+        <v-badge color="error" :content="unread_count" v-if="unread_count">
           <v-icon>mdi-account-circle-outline</v-icon>
         </v-badge>
+        <v-icon v-else>mdi-account-circle-outline</v-icon>
         <span>用户</span>
       </v-btn>
       <!--
@@ -51,7 +52,7 @@
     </v-bottom-sheet>
 
     <v-bottom-sheet class="" max-height="90%" v-model="menu_comments" contained style="z-index: 2600">
-      <book-comments :login="is_login" :comments="comments" @click:add_review="on_add_review"></book-comments>
+      <book-comments :login="is_login" :comments="comments" @add_review="on_add_review"></book-comments>
     </v-bottom-sheet>
 
     <!-- 浮动工具栏 -->
@@ -251,35 +252,45 @@ export default {
     hide_toolbar: function () {
       this.toolbar_left = -999;
     },
-    add_review: function (content) {
+    on_add_review: function (content) {
       const review = {
-        bid: this.book_id,
+        bid: this.review_bid,
         cfi: this.cfi,
         cfi_base: this.cfi_base,
         segment_id: this.segment_id,
+        content: content,
+        type: 1,
       }
-      const url = `/api/review/add`;
+      const url = this.server + `/api/review/add`;
 
       fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        mode: "cors", credentials: "include",
         body: JSON.stringify(review),
       }).then(response => {
         if (!response.ok) {
           throw new Error('网络请求失败，状态码：' + response.status);
         }
         return response.json();
+      }).then(rsp => {
+        if (rsp.err == 'ok') {
+          this.comments.push(rsp.data);
+          alert("评论成功")
+        }
+        console.log("add review rsp = ", rsp)
       });
     },
     load_comments: function (section) {
       // 在rendition加载完成后执行
       console.log("hook: ", section, section.cfiBase)
+      if (this.review_bid <= 0) return;
 
-      var url = `/api/review/summary?bid=${this.review_bid}&cfi=${section.cfiBase}`;
+      var url = this.server + `/api/review/summary?bid=${this.review_bid}&cfi_base=${section.cfiBase}`;
 
-      fetch(url).then(response => {
+      fetch(url, {mode: "cors", credentials: "include"}).then(response => {
         if (!response.ok) {
           throw new Error('网络请求失败，状态码：' + response.status);
         }
@@ -289,13 +300,14 @@ export default {
         rsp.data.list.forEach(item => {
           this.summary[item.segmentId] = item;
         })
-        this.add_comment_icons(section);
       }).catch(function (error) {
         console.error('请求过程中出现错误：', error);
-      });
+      }).finally(() => {
+        this.add_comment_icons(section);
+      });;
     },
     show_selected_comments: function (cfiBase, cfi, segment_id) {
-      const url = `/api/review/list?bid=${this.review_bid}&base=${cfiBase}&segment=${segment_id}&cfi=${cfi}`;
+      const url = this.server + `/api/review/list?bid=${this.review_bid}&cfi_base=${cfiBase}&segment_id=${segment_id}&cfi=${cfi}`;
       fetch(url).then(rsp => rsp.json()).then(rsp => {
         this.comments = rsp.data.list;
         this.menu_comments = true;
@@ -306,7 +318,7 @@ export default {
       })
     },
     add_comment_icons: function (section) {
-      // 为每个段落添加评论图标和计数器
+      console.log("为每个段落添加评论图标和计数器")
       const doc = section.document;
       const paragraphs = doc.getElementsByTagName("p");
       Array.from(paragraphs).forEach((p, index) => {
@@ -321,9 +333,11 @@ export default {
         p.setAttribute("data-paragraph-id", paragraphId);
         p.setAttribute("data-cfi", cfi);
         p.setAttribute("id", cfi);
+        console.log(index, paragraphId, cfi)
 
         // 获取当前段落的评论数量
         const state = this.summary[index];
+        if (state === undefined) return;
         const count = state.reviewNum;
         const is_hot = state.is_hot ? "hot-comment" : "";
 
@@ -349,7 +363,12 @@ export default {
     },
   },
   mounted: function () {
-    this.book = ePub("/guimi/");
+    const url = this.server + `/api/review/me?count=true`;
+      fetch(url, {mode: "cors", credentials: "include"}).then(rsp => rsp.json()).then(rsp => {
+        this.unread_count = rsp.data.count;
+      })
+
+        this.book = ePub("/guimi/");
     this.rendition = this.book.renderTo("reader", {
       manager: "continuous",
       flow: this.settings.flow,
@@ -362,7 +381,8 @@ export default {
       console.log(metadata);
       this.book_meta = metadata;
       this.book_title = metadata.title;
-      fetch(`/api/review/book?title=${this.book_title}`).then(rsp => rsp.json()).then(rsp => {
+      const url = this.server + `/api/review/book?title=${this.book_title}`;
+      fetch(url, {mode: "cors", credentials: "include"}).then(rsp => rsp.json()).then(rsp => {
         this.review_bid = rsp.data.id;
       })
     });
@@ -393,7 +413,7 @@ export default {
       theme_day: "white",
       theme_night: "grey",
     },
-    server: "http://localhost/api/",
+    server: "http://localhost:8080",
     is_login: true,
     book_title: "",
     book_meta: null,
@@ -417,6 +437,7 @@ export default {
     selected_cfi: "",
     is_debug_signal: true,
     is_debug_click: false,
+    unread_count: 0,
   })
 }
 </script>

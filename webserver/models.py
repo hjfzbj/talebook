@@ -312,13 +312,13 @@ class ScanFile(Base, SQLAlchemyMixin):
         self.update_time = datetime.datetime.now()
 
 
-class ReviewType(enum.Enum):
-    comment = 3
-    like = 1
-    dislike = 2
+class ReviewType:
+    comment = 1
+    like = 2
+    dislike = 3
 
 
-class ReviewStatus(enum.Enum):
+class ReviewStatus:
     unread = 1
     read = 2
     deleted = 3
@@ -331,36 +331,73 @@ class Review(Base, SQLAlchemyMixin):
     cfi = Column(String(255), default="")
     cfi_base = Column(String(255), default="")
     segment_id = Column(Integer, default=0)
-    type = Column(Enum(ReviewType))
+    type = Column(Integer, default=0)
+    level = Column(Integer, default=0)  # 评论楼层
     content = Column(String(1024), default="")
     create_time = Column(DateTime)
     update_time = Column(DateTime)
+    geo = Column(String(255), default="")
 
-    user = Column(Integer, ForeignKey('readers.id'))
-    root = Column(Integer, ForeignKey('reviews.id'))
-    quote = Column(Integer, ForeignKey('reviews.id'))
+    user_id = Column(Integer, ForeignKey('readers.id'))
+    root_id = Column(Integer, ForeignKey('reviews.id'))
+    quote_id = Column(Integer, ForeignKey('reviews.id'))
+
+    # 定义关系属性
+    user = relationship("Reader")
+
+    # 定义与自身关联的关系，用于表示根评论（root）
+    root = relationship(
+        "Review",
+        remote_side=[id],  # 指明远程端，也就是关联的另一端的主键，这里是自身的id列
+        foreign_keys=[root_id],  # 指明当前关系对应的外键列
+        backref="all_reply",  # 反向引用名称，方便从根评论反向获取子评论
+        lazy='select'  # 设置加载策略为懒加载，按需加载关联对象，避免潜在循环依赖问题
+    )
+
+    # 定义与自身关联的关系，用于表示引用的评论（quote）
+    quote = relationship(
+        "Review",
+        remote_side=[id],
+        foreign_keys=[quote_id],
+        backref="sub_reply",
+        lazy='select'
+    )
 
     #user = relationship(Reader, primaryjoin=user_id == Reader.id)
-    #quote = relationship("Review", primaryjoin="quote_id == Review.id")
     #root = relationship("Review", primaryjoin="root_id == Review.id")
+    #quote = relationship("Review", primaryjoin="quote_id == Review.id")
 
     like_count = Column(Integer, default=0)
     dislike_count = Column(Integer, default=0)
 
-    def to_full_dict(self):
+    def to_full_dict(self, current_user=None):
         row = self
-        d = row.to_dict()
+        d = {}
+        d['reviewId'] = row.id
+        d['cbid'] = row.bid
+        d['content'] = row.content
+        d['segmentId'] = row.segment_id
+        d['type'] = row.type
+        d['geo'] = row.geo
+        d['level'] = row.level
+        d['createTime'] = row.create_time.strftime("%Y-%m-%d %H:%M:%S")
+        d['updateTime'] = row.update_time.strftime("%Y-%m-%d %H:%M:%S")
         d['userId']  = row.user.id
         d['avatar'] = row.user.avatar
         d['nickName'] = row.user.name
-        if row.quote:
-            d['quoteReviewId'] = row.quote.id
+        d['rootReviewId'] = row.root_id
+        d['quoteReviewId'] = row.quote_id
+        d['quoteContent'] = ""
+        d['quoteUserId'] = 0
+        d['quoteNickName'] = ""
+        d['isSelf'] = False
+        if row.quote_id:
             d['quoteContent'] = row.quote.content
-            d['quoteUserId'] = row.quote.user.id
+            d['quoteUserId'] = row.quote.user_id
             d['quoteNickName'] = row.quote.user.name
-        d['rootReviewId'] = row.root.id
-        d['isSelf'] = row.user.id == self.current_user.id
-        d['ipAddress'] = self.request.remote_ip
+        if current_user:
+            d['isSelf'] = row.user_id == current_user.id
+        logging.error(d)
         return d
 
 

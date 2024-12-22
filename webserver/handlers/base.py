@@ -58,9 +58,6 @@ def js(func):
             rsp = {"err": "exception", "msg": msg}
             if isinstance(e, web.Finish):
                 rsp = ""
-        origin = self.request.headers.get("origin", "*")
-        self.set_header("Access-Control-Allow-Origin", origin)
-        self.set_header("Access-Control-Allow-Credentials", "true")
         self.set_header("Cache-Control", "max-age=0")
         self.write(rsp)
         self.finish()
@@ -120,6 +117,9 @@ class BaseHandler(web.RequestHandler):
     def head(self, *args, **kwargs):
         return self.get(*args, **kwargs)
 
+    def options(self, *args, **kwargs):
+        return self.finish()
+
     def mark_invited(self):
         self.set_secure_cookie("invited", str(int(time.time())))
 
@@ -178,6 +178,11 @@ class BaseHandler(web.RequestHandler):
             self.cdn_url = self.request.protocol + "://" + CONF["static_host"]
 
     def prepare(self):
+        origin = self.request.headers.get("origin", "*")
+        self.set_header("Access-Control-Allow-Origin", origin)
+        self.set_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+        self.set_header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        self.set_header("Access-Control-Allow-Credentials", "true")
         self.set_hosts()
         self.set_i18n()
         self.process_auth_header()

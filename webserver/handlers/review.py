@@ -51,12 +51,7 @@ class ReviewList(BaseHandler):
             Review.cfi_base == cfi_base,
             Review.segment_id == segment_id)
 
-        data = []
-        for row in q.all():
-            d = row.to_full_dict()
-            d['isSelf'] = row.user.id == self.current_user.id
-            d['ipAddress'] = self.request.remote_ip
-            data.append(row.to_full_dict())
+        data = [row.to_full_dict(self.current_user) for row in q.all()]
 
         return {"err": "ok", "data": {"list": data}}
     
@@ -104,16 +99,28 @@ class ReviewAdd(BaseHandler):
         if not data:
             return {"err": "params.invalid", "msg": _(u"参数错误")}
         
+        n = self.session.query(Review).filter(
+            Review.bid == data['bid'],
+            Review.cfi_base == data['cfi_base'],
+            Review.segment_id == data['segment_id']).count()
+        
         review = Review(**data)
-        review.user = self.current_user.id
+        review.level = n + 1
+        review.geo = self.request.remote_ip
+        review.user_id = self.current_user.id
+        review.create_time = datetime.datetime.now()
+        review.update_time = review.create_time
         review.save()
 
-        review.quote.update_time = datetime.datetime.now()
-        review.quote.save()
+        if review.quote_id:
+            review.quote.update_time = datetime.datetime.now()
+            review.quote.save()
 
-        review.root.update_time = datetime.datetime.now()
-        review.root.save()
-        return {"err": "ok"}
+        if review.root_id:
+            review.root.update_time = datetime.datetime.now()
+            review.root.save()
+
+        return {"err": "ok", "data": review.to_full_dict(self.current_user)}
 
 
 class ReviewMe(BaseHandler):
@@ -122,7 +129,7 @@ class ReviewMe(BaseHandler):
     def get(self):
         is_count = self.get_argument("count", "").strip() != ""
         last_read = self.current_user.extra.get("last_read", "")
-        q = self.session.query(Review).filter(Review.user == self.current_user.id)
+        q = self.session.query(Review).filter(Review.user_id == self.current_user.id)
         if last_read:
             q = q.filter(Review.update_time > last_read)
         else:
@@ -131,13 +138,7 @@ class ReviewMe(BaseHandler):
         if is_count:
             return {"err": "ok", "data": {"count": q.count()}}
 
-        data = []
-        for row in q.all():
-            d = row.to_full_dict()
-            d['isSelf'] = row.user.id == self.current_user.id
-            d['ipAddress'] = self.request.remote_ip
-            data.append(row.to_full_dict())
-
+        data = [row.to_full_dict(self.current_user) for row in q.all()]
         return {"err": "ok", "data": {"list": data}}
 
 

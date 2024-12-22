@@ -14,7 +14,7 @@
         <v-list-item class="pr-0 align-self-start mb-4" :prepend-avatar="c.avatar" append-icon="mdi-thumb-up"
           :subtitle="c.nickName">
           {{ c.content }}
-          <v-list-item-subtitle>{{ c.level }}楼 * {{ c.createTime }} * {{ c.ipAddress }}</v-list-item-subtitle>
+          <v-list-item-subtitle>{{ c.level }}楼 * {{ c.createTime }} * {{ c.geo }}</v-list-item-subtitle>
           <template v-slot:prepend>
             <v-avatar class="text-center" :icon="c.avatar"></v-avatar>
           </template>
