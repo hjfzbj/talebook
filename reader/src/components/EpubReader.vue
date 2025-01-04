@@ -131,14 +131,31 @@ export default {
       console.log(item);
       this.rendition.display(item.id);
     },
+    wait_selected_then_click: function (event) {
+      // epub.js 中要等待 250ms 才检测是否为selected
+      // 所以这里也要等待一下，优先执行 selected 操作
+      setTimeout(() => {
+        if (!this.is_handlering_selected_content) {
+          this.on_click_content(event);
+        } else {
+          this.is_handlering_selected_content = false;
+        }
+      }, 300);
+    },
     on_click_content: function (event) {
-      this.hide_toolbar();
       const viewer = document.getElementById('reader');
       const width = viewer.offsetWidth;
       const x = event.clientX % viewer.offsetWidth;
       const y = event.clientY % viewer.offsetHeight;
       this.debug_click(x, y, width)
 
+      // 如果工具栏还在，那么这次点击视作「隐藏工具栏」
+      if (this.is_toolbar_visible()) {
+        this.hide_toolbar();
+        return;
+      }
+
+      // 按照功能区的点击处理
       if (x < width / 3) {
         // 点击左侧，往前翻页
         console.log("prev page")
@@ -162,7 +179,7 @@ export default {
           break;
         }
         const sub = subitems[mid];
-        console.log(left, mid, right, sub)
+        // console.log(left, mid, right, sub)
         if (sub.cfi === undefined) {
           const pos = sub.href.split("#")[1];
           sub.elem = contents.document.getElementById(pos);
@@ -181,11 +198,10 @@ export default {
       }
       const found = subitems[left]
       if (found.cfi === undefined) {
-          const pos = found.href.split("#")[1];
-          found.elem = contents.document.getElementById(pos);
-          found.cfi = new ePub.CFI(found.elem, contents.cfiBase);
-        }
-      console.log("found:", found);
+        const pos = found.href.split("#")[1];
+        found.elem = contents.document.getElementById(pos);
+        found.cfi = new ePub.CFI(found.elem, contents.cfiBase);
+      }
       return found;
     },
     find_toc: function (cfi, contents) {
@@ -197,22 +213,22 @@ export default {
         if (toc.href != section.href) {
           continue
         }
-        toc.cfi = section.cfiFromElement();
         const tags = ["h1", "h2", "h3", "h4", "h5", "h6", "p"];
-        for ( let tag of tags) {
+        for (let tag of tags) {
           const elems = section.document.getElementsByTagName(tag)
           if (elems.length > 0) {
             toc.elem = elems[0];
             break;
           }
         }
+        toc.cfi = new ePub.CFI(toc.elem, contents.cfiBase);
         // 如果没有子目录，那就是它自己了
         if (toc.subitems.length == 0) {
           return toc;
         }
 
         // TODO：写入缓存
-        if (toc.cfi === undefined ) {
+        if (toc.cfi === undefined) {
         }
 
         // 二分查找所属的目录
@@ -236,7 +252,6 @@ export default {
 
       // 从 startElement 开始遍历到 endElement
       let currentNode = start_elem; // 获取 startElement 之后的第一个兄弟节点
-      console.log("count from ", currentNode)
 
       // 遍历节点直到 endElement
       while (currentNode && currentNode !== end) {
@@ -248,41 +263,10 @@ export default {
 
       return count;
     },
-    on_select_content: function (cfiRange, contents) {
-      console.log("on selectd", cfiRange, contents)
-      const range = this.rendition.getRange(cfiRange);
-
-      // 找到选中的元素，并上溯到 P 或者 Hx 对象
-      var p = range.startContainer.nodeType === Node.TEXT_NODE
-        ? range.startContainer.parentElement
-        : range.startContainer;
-      while (p.nodeName != "P" && p.nodeName[0] != "H") {
-        p = p.parentElement;
-      }
-
-      // 遍历toc，查找最近的章节名称
-      const cfi = new ePub.CFI(p, contents.cfiBase);
-      const toc = this.find_toc(cfi, contents);
-
-      // 基于章节名的位置，计算选中段落时第几个，作为ID
-      const segment_id = this.count_distinct_between(toc.elem, p);
-
-      console.log("get cfi = ", cfi, "toc =", toc, "elem =", p, "segment_id = ", segment_id);
-      // debugger
-      // var p = contents.document.getElementById(cfi);
-      // p.style.textDecoration = "underline";
-
-      // 选中全部文字
-      /*
-      const range = contents.document.createRange();
-      range.selectNodeContents(p);
-      const selection = contents.window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      */
-
-      // 把 toolbar 移动到段落附近
-      const rect = p.getBoundingClientRect();
+    hide_toolbar: function () {
+      this.toolbar_left = -999;
+    },
+    show_toolbar: function (rect) {
       const toolbar = document.getElementById('comments-toolbar');
       this.toolbar_left = (rect.width - toolbar.offsetWidth) / 2;
       if (rect.top >= (toolbar.offsetHeight + 64)) {
@@ -290,13 +274,44 @@ export default {
       } else {
         this.toolbar_top = (rect.bottom + 12);
       }
+    },
+    is_toolbar_visible: function () {
+      return (this.toolbar_left > 0);
+    },
+    on_select_content: function (cfiRange, contents) {
+      console.log("on selectd", cfiRange, contents)
+      this.is_handlering_selected_content = true;
 
+      // 找到选中的元素，并上溯到 P 或者 Hx 对象
+      const range = this.rendition.getRange(cfiRange);
+      var p = range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : range.startContainer;
+      while (p.nodeName != "P" && p.nodeName[0] != "H") {
+        p = p.parentElement;
+      }
+      console.log("elem =", p);
+
+      // 遍历toc，查找最近的章节名称
+      // 然后基于章节名的位置，计算选中段落是第几个，作为ID
+      const cfi = new ePub.CFI(p, contents.cfiBase);
+      const toc = this.find_toc(cfi, contents);
+      console.log("cfi = ", cfi, "toc =", toc);
+
+      // 基于cfi的数字快速计算
+      const segment_id = cfi.path.steps[1].index - toc.cfi.path.steps[1].index;
+      // const segment_id = this.count_distinct_between(toc.elem, p);
+      console.log("segment_id = ", segment_id);
+
+      this.selected_toc = toc;
       this.selected_cfi = cfi;
       this.selected_cfi_base = contents.cfiBase;
-      this.selected_segment_id = p.getAttribute("data-segment-id");
+      this.selected_segment_id = segment_id;
 
-      // this.book.getRange(cfiRange).then((range) => {})
+      // 把 toolbar 移动到段落附近
+      this.show_toolbar(p.getBoundingClientRect());
 
+      // debugger
     },
     on_click_toolbar_comments: function () {
       console.log("点击发表评论按钮", this.selected_cfi_base, this.selected_segment_id)
@@ -335,8 +350,8 @@ export default {
     init_listeners: function () {
       document.addEventListener('keyup', this.on_keyup, false);
       this.rendition.on('keyup', this.on_keyup, false);
-      this.rendition.on('click', this.on_click_content, false);
-      this.rendition.on('selected', this.on_select_content, false);
+      this.rendition.on('selected', this.on_select_content, true);
+      this.rendition.on('click', this.wait_selected_then_click, false);
       this.rendition.hooks.content.register(this.load_comments);
       this.debug_signals();
     },
@@ -359,9 +374,6 @@ export default {
       this.rendition.themes.register("eyecare", "themes.css");
 
       this.rendition.themes.select(this.settings.theme_day);
-    },
-    hide_toolbar: function () {
-      this.toolbar_left = -999;
     },
     on_add_review: function (content) {
       const review = {
@@ -550,8 +562,9 @@ export default {
     selected_cfi_base: "",
     selected_cfi: "",
     is_debug_signal: true,
-    is_debug_click: false,
+    is_debug_click: true,
     unread_count: 0,
+    is_handlering_selected_content: false,
   })
 }
 </script>
