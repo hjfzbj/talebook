@@ -163,10 +163,12 @@ export default {
         }
         const sub = subitems[mid];
         console.log(left, mid, right, sub)
-        const pos = sub.href.split("#")[1];
-        const elem = contents.document.getElementById(pos);
-        const toc_cfi = new ePub.CFI(elem, contents.cfiBase)
-        const cmp = this.book.locations.epubcfi.compare(cfi, toc_cfi);
+        if (sub.cfi === undefined) {
+          const pos = sub.href.split("#")[1];
+          sub.elem = contents.document.getElementById(pos);
+          sub.cfi = new ePub.CFI(sub.elem, contents.cfiBase);
+        }
+        const cmp = this.book.locations.epubcfi.compare(cfi, sub.cfi);
         if (cmp == 0) {
           return sub;
         }
@@ -178,44 +180,66 @@ export default {
         }
       }
       const found = subitems[left]
+      if (found.cfi === undefined) {
+          const pos = found.href.split("#")[1];
+          found.elem = contents.document.getElementById(pos);
+          found.cfi = new ePub.CFI(found.elem, contents.cfiBase);
+        }
       console.log("found:", found);
       return found;
     },
     find_toc: function (cfi, contents) {
+      // 获取当前所属的章节（可能是一个包含N个小节的卷）
       const section = this.book.spine.get(contents.sectionIndex);
       for (var x in this.toc_items) {
         const toc = this.toc_items[x];
+        // 查找 session 所属的目录信息
         if (toc.href != section.href) {
           continue
         }
+        toc.cfi = section.cfiFromElement();
+        const tags = ["h1", "h2", "h3", "h4", "h5", "h6", "p"];
+        for ( let tag of tags) {
+          const elems = section.document.getElementsByTagName(tag)
+          if (elems.length > 0) {
+            toc.elem = elems[0];
+            break;
+          }
+        }
+        // 如果没有子目录，那就是它自己了
         if (toc.subitems.length == 0) {
           return toc;
         }
 
-        // 检查是否在第一个subitem之前
-        const sub = toc.subitems[0];
-        const pos = sub.href.split("#")[1];
-        const elem = contents.document.getElementById(pos);
-        const toc_cfi = new ePub.CFI(elem, contents.cfiBase)
-        const cmp = this.book.locations.epubcfi.compare(cfi, toc_cfi);
-        if (cmp < 0) {
-          return toc;
+        // TODO：写入缓存
+        if (toc.cfi === undefined ) {
         }
-        return this.bin_search(toc.subitems, cfi, contents);
+
+        // 二分查找所属的目录
+        const found = this.bin_search(toc.subitems, cfi, contents);
+        if (this.book.locations.epubcfi.compare(cfi, found.cfi) < 0) {
+          // 检查是否在第一个subitem之前
+          return toc
+        }
+        return found;
       }
     },
     count_distinct_between: function (start_elem, end_elem) {
       // 获取父节点
-      let parent = start_elem.parentNode;
+      var end = end_elem;
+      while (end.parentElement != start_elem.parentNode) {
+        end = end.parentElement;
+      }
 
       // 初始化计数器
       let count = 0;
 
       // 从 startElement 开始遍历到 endElement
-      let currentNode = start_elem.nextSibling; // 获取 startElement 之后的第一个兄弟节点
+      let currentNode = start_elem; // 获取 startElement 之后的第一个兄弟节点
+      console.log("count from ", currentNode)
 
       // 遍历节点直到 endElement
-      while (currentNode && currentNode !== end_elem) {
+      while (currentNode && currentNode !== end) {
         if (currentNode.nodeName === "P") {
           count++; // 如果当前节点是 <p>，则计数
         }
@@ -227,16 +251,24 @@ export default {
     on_select_content: function (cfiRange, contents) {
       console.log("on selectd", cfiRange, contents)
       const range = this.rendition.getRange(cfiRange);
+
+      // 找到选中的元素，并上溯到 P 或者 Hx 对象
       var p = range.startContainer.nodeType === Node.TEXT_NODE
         ? range.startContainer.parentElement
         : range.startContainer;
-      const cfi = new ePub.CFI(p, contents.cfiBase);
-      const toc = this.find_toc(cfi, contents)
+      while (p.nodeName != "P" && p.nodeName[0] != "H") {
+        p = p.parentElement;
+      }
 
       // 遍历toc，查找最近的章节名称
+      const cfi = new ePub.CFI(p, contents.cfiBase);
+      const toc = this.find_toc(cfi, contents);
 
-      console.log("get cfi = ", cfi, "toc =", toc, "elem =", p)
-      debugger
+      // 基于章节名的位置，计算选中段落时第几个，作为ID
+      const segment_id = this.count_distinct_between(toc.elem, p);
+
+      console.log("get cfi = ", cfi, "toc =", toc, "elem =", p, "segment_id = ", segment_id);
+      // debugger
       // var p = contents.document.getElementById(cfi);
       // p.style.textDecoration = "underline";
 
@@ -248,7 +280,6 @@ export default {
       selection.removeAllRanges();
       selection.addRange(range);
       */
-
 
       // 把 toolbar 移动到段落附近
       const rect = p.getBoundingClientRect();
