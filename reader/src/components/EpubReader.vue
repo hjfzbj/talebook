@@ -152,12 +152,92 @@ export default {
         this.active_menu = !this.active_menu;
       }
     },
+    bin_search: function (subitems, cfi, contents) {
+      var left = 0;
+      var right = subitems.length;
+      // 在sub里搜索
+      while (left < right) {
+        const mid = Math.floor((left + right) / 2);
+        if (mid == left) {
+          break;
+        }
+        const sub = subitems[mid];
+        console.log(left, mid, right, sub)
+        const pos = sub.href.split("#")[1];
+        const elem = contents.document.getElementById(pos);
+        const toc_cfi = new ePub.CFI(elem, contents.cfiBase)
+        const cmp = this.book.locations.epubcfi.compare(cfi, toc_cfi);
+        if (cmp == 0) {
+          return sub;
+        }
+        if (cmp < 0) {
+          right = mid;
+        }
+        if (cmp > 0) {
+          left = mid;
+        }
+      }
+      const found = subitems[left]
+      console.log("found:", found);
+      return found;
+    },
+    find_toc: function (cfi, contents) {
+      const section = this.book.spine.get(contents.sectionIndex);
+      for (var x in this.toc_items) {
+        const toc = this.toc_items[x];
+        if (toc.href != section.href) {
+          continue
+        }
+        if (toc.subitems.length == 0) {
+          return toc;
+        }
+
+        // 检查是否在第一个subitem之前
+        const sub = toc.subitems[0];
+        const pos = sub.href.split("#")[1];
+        const elem = contents.document.getElementById(pos);
+        const toc_cfi = new ePub.CFI(elem, contents.cfiBase)
+        const cmp = this.book.locations.epubcfi.compare(cfi, toc_cfi);
+        if (cmp < 0) {
+          return toc;
+        }
+        return this.bin_search(toc.subitems, cfi, contents);
+      }
+    },
+    count_distinct_between: function (start_elem, end_elem) {
+      // 获取父节点
+      let parent = start_elem.parentNode;
+
+      // 初始化计数器
+      let count = 0;
+
+      // 从 startElement 开始遍历到 endElement
+      let currentNode = start_elem.nextSibling; // 获取 startElement 之后的第一个兄弟节点
+
+      // 遍历节点直到 endElement
+      while (currentNode && currentNode !== end_elem) {
+        if (currentNode.nodeName === "P") {
+          count++; // 如果当前节点是 <p>，则计数
+        }
+        currentNode = currentNode.nextSibling; // 移动到下一个兄弟节点
+      }
+
+      return count;
+    },
     on_select_content: function (cfiRange, contents) {
       console.log("on selectd", cfiRange, contents)
-      var cfi = cfiRange.replace(/\[epub[^)]*\)\]/, '').replace(/,[^)]*/, '');
-      console.log("get cfi = ", cfi)
+      const range = this.rendition.getRange(cfiRange);
+      var p = range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : range.startContainer;
+      const cfi = new ePub.CFI(p, contents.cfiBase);
+      const toc = this.find_toc(cfi, contents)
 
-      var p = contents.document.getElementById(cfi);
+      // 遍历toc，查找最近的章节名称
+
+      console.log("get cfi = ", cfi, "toc =", toc, "elem =", p)
+      debugger
+      // var p = contents.document.getElementById(cfi);
       // p.style.textDecoration = "underline";
 
       // 选中全部文字
@@ -262,6 +342,7 @@ export default {
         type: 1,
       }
       const url = this.server + `/api/review/add`;
+      debugger
 
       fetch(url, {
         method: 'POST',
@@ -290,7 +371,7 @@ export default {
 
       var url = this.server + `/api/review/summary?bid=${this.review_bid}&cfi_base=${section.cfiBase}`;
 
-      fetch(url, {mode: "cors", credentials: "include"}).then(response => {
+      fetch(url, { mode: "cors", credentials: "include" }).then(response => {
         if (!response.ok) {
           throw new Error('网络请求失败，状态码：' + response.status);
         }
@@ -321,6 +402,7 @@ export default {
       console.log("为每个段落添加评论图标和计数器")
       const doc = section.document;
       const paragraphs = doc.getElementsByTagName("p");
+      return;
       Array.from(paragraphs).forEach((p, index) => {
         // 获取段落的 CFI
         //const cfi = section.cfiFromElement(p);
@@ -364,11 +446,11 @@ export default {
   },
   mounted: function () {
     const url = this.server + `/api/review/me?count=true`;
-      fetch(url, {mode: "cors", credentials: "include"}).then(rsp => rsp.json()).then(rsp => {
-        this.unread_count = rsp.data.count;
-      })
+    fetch(url, { mode: "cors", credentials: "include" }).then(rsp => rsp.json()).then(rsp => {
+      this.unread_count = rsp.data.count;
+    })
 
-        this.book = ePub("/guimi/");
+    this.book = ePub("/guimi/");
     this.rendition = this.book.renderTo("reader", {
       manager: "continuous",
       flow: this.settings.flow,
@@ -382,7 +464,7 @@ export default {
       this.book_meta = metadata;
       this.book_title = metadata.title;
       const url = this.server + `/api/review/book?title=${this.book_title}`;
-      fetch(url, {mode: "cors", credentials: "include"}).then(rsp => rsp.json()).then(rsp => {
+      fetch(url, { mode: "cors", credentials: "include" }).then(rsp => rsp.json()).then(rsp => {
         this.review_bid = rsp.data.id;
       })
     });
@@ -398,7 +480,8 @@ export default {
     this.init_themes();
 
     this.book.ready.then(() => {
-      this.rendition.display('Text/Chapter_0217.xhtml');
+      this.rendition.display("index_split_002.html#filepos160365")
+      // this.rendition.display('Text/Chapter_0217.xhtml');
     })
 
   },
