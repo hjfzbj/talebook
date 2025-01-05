@@ -135,7 +135,6 @@ class ReviewAdd(BaseHandler):
 
         if chapter is None:
             chapter = ReviewChapter(book_id = book_id, title = name, alias = chapter_name)
-            chapter.set_title(data['chapter_name'])
             chapter.save()
 
         n = (

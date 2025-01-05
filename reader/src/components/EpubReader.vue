@@ -1,7 +1,7 @@
 <template>
-  <v-app full-height density="compact">
+  <v-app :theme="app_theme" full-height density="compact">
     <!-- 顶部菜单 -->
-    <v-app-bar v-if="menu.show_navbar" density="compact" color="primary">
+    <v-app-bar v-if="menu.show_navbar" density="compact">
       <template v-slot:prepend> <v-btn icon> <v-icon>mdi-arrow-left</v-icon> </v-btn> </template>
       {{ alert_msg }}
       <v-spacer></v-spacer>
@@ -10,7 +10,7 @@
     </v-app-bar>
 
     <!-- 底部菜单 -->
-    <v-bottom-navigation v-model="menu.value" :active="menu.show_navbar" color="primary" z-index="2599">
+    <v-bottom-navigation v-model="menu.value" :active="menu.show_navbar" z-index="2599">
       <v-btn value="toc" @click="set_menu('toc')">
         <v-icon>mdi-book-open-variant-outline</v-icon>
         <span>目录</span>
@@ -51,8 +51,8 @@
       <user v-else :messages="comments"></user>
     </v-bottom-sheet>
 
-    <v-bottom-sheet class="" max-height="90%" v-model="menu.panels.comments" contained style="z-index: 2600">
-      <book-comments :login="is_login" :comments="comments" @add_review="on_add_review"></book-comments>
+    <v-bottom-sheet class="" max-height="90%" v-model="menu.panels.comments" contained z-index="2600">
+      <book-comments :login="is_login" :comments="comments" @close="set_menu('hide')" @add_review="on_add_review"></book-comments>
     </v-bottom-sheet>
 
     <!-- 浮动工具栏 -->
@@ -69,9 +69,9 @@
     </div>
 
     <!-- 阅读界面 -->
-    <v-main class="pa-0 fill-height">
-      <div id="book-container" class="fill-height">
-        <div id="reader" class="fill-height"></div>
+    <v-main id='main' class="pa-0">
+      <div id="book-container">
+        <div id="reader"></div>
       </div>
     </v-main>
 
@@ -93,11 +93,13 @@ export default {
   },
   methods: {
     switch_theme: function () {
-      const mode = this.settings.theme_mode;
-      if (mode == "day") {
+      const current_mode = this.settings.theme_mode;
+      if (current_mode == "day") {
+        this.app_theme = "dark"
         this.settings.theme_mode = "night";
         this.rendition.themes.select(this.settings.theme_night);
       } else {
+        this.app_theme = "light"
         this.settings.theme_mode = "day";
         this.rendition.themes.select(this.settings.theme_day);
       }
@@ -119,6 +121,10 @@ export default {
       }
     },
     update_settings: function (opt) {
+      if (opt.flow != this.settings.flow) {
+        this.rendition.flow(opt.flow)
+        this.set_menu('hide')
+      }
       for (const key in opt) {
         this.settings[key] = opt[key];
       }
@@ -127,6 +133,7 @@ export default {
       const theme_key = "theme_" + mode;
       this.settings[theme_key] = this.settings.theme;
       this.rendition.themes.select(this.settings.theme);
+      this.app_theme = (mode == "day")? "light" : "dark";
     },
     on_click_toc: function (item) {
       console.log(item);
@@ -621,7 +628,8 @@ export default {
   data: () => ({
     book: null,
     settings: {
-      flow: "paginated",
+      flow: "scrolled",
+      // flow: "paginated",
       font_size: 18,
       brightness: 100,
       theme: "white",
@@ -631,10 +639,11 @@ export default {
     },
     server: "http://localhost:8080",
 
-    // book_url: "/guimi2/", display_url: 'Text/Chapter_0004.xhtml',
-    book_url: "/guimi/", display_url: "index_split_002.html#filepos160365",
+    book_url: "/guimi2/", display_url: 'Text/Chapter_0004.xhtml',
+    // book_url: "/guimi/", display_url: "index_split_002.html#filepos160365",
 
     comments_refresh_time: 10 * 60 * 100, // 10min
+    app_theme: "light",
     is_login: true,
     book_title: "",
     book_meta: null,
@@ -663,7 +672,7 @@ export default {
     toolbar_top: 0,
 
     is_debug_signal: true,
-    is_debug_click: true,
+    is_debug_click: false,
     unread_count: 0,
     is_handlering_selected_content: false,
     check_if_selected_content: false,
@@ -687,5 +696,12 @@ export default {
   left: 0;
   top: 0;
   z-index: 999;
+}
+
+#main {
+  height: 100%;
+  width: 100%;
+  position: absolute;
+
 }
 </style>

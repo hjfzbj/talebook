@@ -5,7 +5,11 @@
     </v-card-title>
 
     <v-divider></v-divider>
-    <v-card-text>消息</v-card-text>
+    <v-list v-if="messages.length == 0" density="compact" class="mr-4">
+      <v-list-item class="my-4">
+        <v-list-item-title class="text-center">无新的互动消息</v-list-item-title>
+      </v-list-item>
+    </v-list>
     <v-list id="book-comments" density="compact" class="mr-4">
       <template v-for="c in messages">
         <v-list-item class="pr-0 align-self-start mb-4" :prepend-avatar="c.avatar" 

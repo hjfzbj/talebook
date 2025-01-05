@@ -9,7 +9,12 @@
       </v-col>
     </v-row>
     <v-divider></v-divider>
-    <v-list id='book-comments' density="compact">
+    <v-list  v-if="comments.length == 0"  density="compact">
+      <v-list-item class="my-4">
+        <v-list-item-title class="text-center">尚未有人发表评论</v-list-item-title>
+      </v-list-item>
+    </v-list>
+    <v-list v-else id='book-comments' density="compact">
       <template v-for="c in comments">
         <v-list-item class="pr-0 align-self-start mb-4" :prepend-avatar="c.avatar" append-icon="mdi-thumb-up"
           :subtitle="c.nickName">
