@@ -1,7 +1,7 @@
 <template>
   <v-app full-height density="compact">
     <!-- 顶部菜单 -->
-    <v-app-bar v-if="active_menu" density="compact" color="primary">
+    <v-app-bar v-if="menu.show_navbar" density="compact" color="primary">
       <template v-slot:prepend> <v-btn icon> <v-icon>mdi-arrow-left</v-icon> </v-btn> </template>
       {{ alert_msg }}
       <v-spacer></v-spacer>
@@ -10,20 +10,20 @@
     </v-app-bar>
 
     <!-- 底部菜单 -->
-    <v-bottom-navigation :active="active_menu" color="primary" z-index="2599">
+    <v-bottom-navigation v-model="menu.value" :active="menu.show_navbar" color="primary" z-index="2599">
       <v-btn value="toc" @click="set_menu('toc')">
         <v-icon>mdi-book-open-variant-outline</v-icon>
         <span>目录</span>
       </v-btn>
-      <v-btn value="theme" @click="switch_theme">
+      <v-btn @click="switch_theme">
         <v-icon>{{ switch_theme_icon }}</v-icon>
         <span>{{ switch_theme_text }}</span>
       </v-btn>
-      <v-btn value="setting" @click="set_menu('settings')">
+      <v-btn value="settings" @click="set_menu('settings')">
         <v-icon>mdi-cog</v-icon>
         <span>设置</span>
       </v-btn>
-      <v-btn value="more" @click="set_menu('more')">
+      <v-btn @click="set_menu('more')">
         <v-badge color="error" :content="unread_count" v-if="unread_count">
           <v-icon>mdi-account-circle-outline</v-icon>
         </v-badge>
@@ -38,20 +38,20 @@
       -->
     </v-bottom-navigation>
 
-    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_settings" contained persistent z-index="234">
+    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu.panels.settings" contained persistent z-index="234">
       <settings :settings="settings" @update="update_settings"></settings>
     </v-bottom-sheet>
 
-    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_toc" contained close-on-content-click z-index="234">
+    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu.panels.toc" contained close-on-content-click z-index="234">
       <book-toc :meta="book_meta" :toc_items="toc_items" @click:select="on_click_toc"></book-toc>
     </v-bottom-sheet>
 
-    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu_more" contained persistent z-index="234">
+    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu.panels.more" contained persistent z-index="234">
       <guest v-if="!is_login"></guest>
       <user v-else :messages="comments"></user>
     </v-bottom-sheet>
 
-    <v-bottom-sheet class="" max-height="90%" v-model="menu_comments" contained style="z-index: 2600">
+    <v-bottom-sheet class="" max-height="90%" v-model="menu.panels.comments" contained style="z-index: 2600">
       <book-comments :login="is_login" :comments="comments" @add_review="on_add_review"></book-comments>
     </v-bottom-sheet>
 
@@ -102,19 +102,20 @@ export default {
         this.rendition.themes.select(this.settings.theme_day);
       }
     },
-    set_menu: function (target) {
-      if (this.menu == target) {
-        this.menu = 'hide';
-      } else {
-        this.menu = target;
+    set_menu: function (target_menu_panel) {
+      var target = target_menu_panel;
+      if (this.menu.current_panel == target) {
+        if (this.menu.panels[target] === true) {
+            target = 'hide';
+        }
       }
-      console.log("set menu = ", this.menu);
-      this.active_menu = true;
-      this.menu_toc = false;
-      this.menu_more = false;
-      this.menu_settings = false;
-      if (this.menu != 'hide') {
-        this["menu_" + target] = true;
+
+      this.menu.value = (target == 'hide') ? undefined : target;
+      console.log("set menu = ", target, ", current menu.value=", this.menu.value);
+      this.menu.current_panel = target;
+      this.menu.show_navbar = true;
+      for (var k in this.menu.panels) {
+        this.menu.panels[k] = (k == target);
       }
     },
     update_settings: function (opt) {
@@ -129,6 +130,7 @@ export default {
     },
     on_click_toc: function (item) {
       console.log(item);
+      this.set_menu("hide");
       this.rendition.display(item.id);
     },
     on_mousedown: function (mouse_event) {
@@ -181,7 +183,7 @@ export default {
         this.rendition.next().then();
       } else {
         // 点击中间，显示菜单
-        this.active_menu = !this.active_menu;
+        this.menu.show_navbar = !this.menu.show_navbar;
       }
     },
     bin_search: function (subitems, cfi, contents) {
@@ -567,13 +569,13 @@ export default {
 
       // ID 不存在的话，说明压根就没评论，不用查询了
       if (toc.chapter_id === undefined) {
-        this.menu_comments = true;
+        this.set_menu("comments")
         return;
       }
       const url = this.server + `/api/review/list?book_id=${this.book_id}&chapter_id=${toc.chapter_id}&segment_id=${segment_id}&cfi=${cfi}`;
       fetch(url).then(rsp => rsp.json()).then(rsp => {
         this.comments = rsp.data.list;
-        this.menu_comments = true;
+        this.set_menu("comments")
         // this.set_menu("comments");
       })
     },
@@ -640,12 +642,17 @@ export default {
     alert_msg: "x",
     rendition: null,
     auto_close: false,
-    active_menu: true,
-    menu: "hide",
-    menu_toc: false,
-    menu_more: false,
-    menu_settings: false,
-    menu_comments: false,
+    menu: {
+      show_navbar: true,
+      current_panel: "hide",
+      value: "",
+      panels: {
+        toc: false,
+        more: false,
+        settings: false,
+        comments: false,
+      }
+    },
     theme_mode: "day",
     toc_items: [],
     comments: [],
