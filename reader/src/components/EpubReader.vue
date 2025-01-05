@@ -167,9 +167,11 @@ export default {
     smart_click: function (event) {
       const viewer = document.getElementById('reader');
       const width = viewer.offsetWidth;
+      const height = viewer.offsetHeight;
       const x = event.clientX % viewer.offsetWidth;
       const y = event.clientY % viewer.offsetHeight;
-      this.debug_click(x, y, width)
+      this.debug_click(x, y, width, height)
+
 
       // 如果工具栏还在，那么这次点击视作「隐藏工具栏」
       if (this.is_toolbar_visible()) {
@@ -178,11 +180,12 @@ export default {
       }
 
       // 按照功能区的点击处理
-      if (x < width / 3) {
+      const N = width > this.wide_screen ? 5 : 3;
+      if ( x < width / N || y < height / N) {
         // 点击左侧，往前翻页
         console.log("prev page")
         this.rendition.prev();
-      } else if (x > width * 2 / 3) {
+      } else if (x > width * (N-1) / N || y > height * (N-1) / N) {
         // 点击右侧，往后翻页
         console.log("next page")
         this.rendition.next().then();
@@ -384,8 +387,8 @@ export default {
         this.rendition.next();
       }
     },
-    debug_click: function (x, y, width) {
-      console.log("click at", x, y, width);
+    debug_click: function (x, y, width, height) {
+      console.log("click at", x, y, width, height);
       if (!this.is_debug_click) return;
 
       x = x - 10;
@@ -672,6 +675,7 @@ export default {
     book_url: "/guimi2/", display_url: 'Text/Chapter_0004.xhtml',
     // book_url: "/guimi/", display_url: "index_split_002.html#filepos160365",
 
+    wide_screen: 1000, // 宽屏尺寸
     comments_refresh_time: 10 * 60 * 100, // 10min
     app_theme: "light",
     is_login: true,
@@ -702,7 +706,7 @@ export default {
     toolbar_top: 0,
 
     is_debug_signal: true,
-    is_debug_click: false,
+    is_debug_click: true,
     unread_count: 0,
     is_handlering_selected_content: false,
     check_if_selected_content: false,
