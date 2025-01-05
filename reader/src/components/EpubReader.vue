@@ -15,14 +15,17 @@
         <v-icon>mdi-book-open-variant-outline</v-icon>
         <span>目录</span>
       </v-btn>
+
       <v-btn @click="switch_theme">
         <v-icon>{{ switch_theme_icon }}</v-icon>
         <span>{{ switch_theme_text }}</span>
       </v-btn>
+
       <v-btn value="settings" @click="set_menu('settings')">
         <v-icon>mdi-cog</v-icon>
         <span>设置</span>
       </v-btn>
+
       <v-btn @click="set_menu('more')">
         <v-badge color="error" :content="unread_count" v-if="unread_count">
           <v-icon>mdi-account-circle-outline</v-icon>
@@ -30,33 +33,29 @@
         <v-icon v-else>mdi-account-circle-outline</v-icon>
         <span>用户</span>
       </v-btn>
-      <!--
-      <v-btn value="more" @click="set_menu('more')">
-        <v-icon>mdi-comment-text-outline</v-icon>
-        <span>评论</span>
-      </v-btn>
-      -->
     </v-bottom-navigation>
 
-    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu.panels.settings" contained persistent z-index="234">
+    <v-bottom-sheet class="fixed mb-14" max-height="90%" v-model="menu.panels.settings" contained persistent z-index="234">
       <settings :settings="settings" @update="update_settings"></settings>
     </v-bottom-sheet>
 
-    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu.panels.toc" contained close-on-content-click z-index="234">
+    <v-bottom-sheet class="fixed mb-14" max-height="90%" v-model="menu.panels.toc" contained close-on-content-click
+      z-index="234">
       <book-toc :meta="book_meta" :toc_items="toc_items" @click:select="on_click_toc"></book-toc>
     </v-bottom-sheet>
 
-    <v-bottom-sheet class="mb-14" max-height="90%" v-model="menu.panels.more" contained persistent z-index="234">
+    <v-bottom-sheet class="fixed mb-14" max-height="90%" v-model="menu.panels.more" contained persistent z-index="234">
       <guest v-if="!is_login"></guest>
       <user v-else :messages="comments"></user>
     </v-bottom-sheet>
 
-    <v-bottom-sheet class="" max-height="90%" v-model="menu.panels.comments" contained z-index="2600">
-      <book-comments :login="is_login" :comments="comments" @close="set_menu('hide')" @add_review="on_add_review"></book-comments>
+    <v-bottom-sheet class="fixed" max-height="90%" v-model="menu.panels.comments" contained z-index="2600">
+      <book-comments :login="is_login" :comments="comments" @close="set_menu('hide')"
+        @add_review="on_add_review"></book-comments>
     </v-bottom-sheet>
 
     <!-- 浮动工具栏 -->
-    <div id="comments-toolbar" :style="`left: ${toolbar_left}px; top: ${toolbar_top}px`">
+    <div id="comments-toolbar" :style="`left: ${toolbar_left}px; top: ${toolbar_top}px; position: fixed`">
       <v-toolbar density="compact" border dense floating elevation="10" rounded>
         <v-btn @click="on_click_toolbar_comments">发段评</v-btn>
         <v-divider vertical></v-divider>
@@ -108,7 +107,7 @@ export default {
       var target = target_menu_panel;
       if (this.menu.current_panel == target) {
         if (this.menu.panels[target] === true) {
-            target = 'hide';
+          target = 'hide';
         }
       }
 
@@ -133,7 +132,7 @@ export default {
       const theme_key = "theme_" + mode;
       this.settings[theme_key] = this.settings.theme;
       this.rendition.themes.select(this.settings.theme);
-      this.app_theme = (mode == "day")? "light" : "dark";
+      this.app_theme = (mode == "day") ? "light" : "dark";
     },
     on_click_toc: function (item) {
       console.log(item);
@@ -204,8 +203,12 @@ export default {
         }
         const sub = subitems[mid];
         if (sub.cfi === undefined) {
-          const pos = sub.href.split("#")[1];
-          sub.elem = contents.document.getElementById(pos);
+          if (sub.href.indexOf("#") > 0) {
+            const pos = sub.href.split("#")[1];
+            sub.elem = contents.document.getElementById(pos);
+          } else {
+            sub.elem = contents.document.getElementsByTagName("p")[0];
+          }
           sub.cfi = new ePub.CFI(sub.elem, contents.cfiBase);
           sub.cfi = new ePub.CFI(sub.cfi.toString()); // 强制转成标准格式
         }
@@ -224,8 +227,12 @@ export default {
       }
       const found = subitems[left]
       if (found.cfi === undefined) {
-        const pos = found.href.split("#")[1];
-        found.elem = contents.document.getElementById(pos);
+        if (found.href.indexOf("#") > 0) {
+          const pos = found.href.split("#")[1];
+          found.elem = contents.document.getElementById(pos);
+        } else {
+          found.elem = contents.document.getElementsByTagName("p")[0];
+        }
         found.cfi = new ePub.CFI(found.elem, contents.cfiBase);
       }
       return found;
@@ -253,8 +260,8 @@ export default {
       const toc = this.find_same_href_in_toc_tree(this.toc_items, section.href);
       console.log("got spine href in toc:", toc)
       if (toc === undefined) {
-        debugger
         return;
+        debugger
       }
 
       // 填充 cfi 定位信息
@@ -455,7 +462,7 @@ export default {
         console.log("add review rsp = ", rsp)
       });
     },
-    on_location_changed: function (loc) {
+    on_location_changed_old: function (loc) {
       // if (this.review_bid <= 0) return;
 
       const contents_list = this.rendition.getContents();
@@ -469,6 +476,25 @@ export default {
 
         this.load_comments_summary(contents, toc);
       })
+    },
+    on_location_changed: function (loc) {
+      const start = new ePub.CFI(loc.start);
+      const end = new ePub.CFI(loc.end)
+      const contents_list = this.rendition.getContents();
+
+      for (var idx = start.spinePos; idx <= end.spinePos; idx++) {
+        const spine = this.book.spine.get(idx);
+        const found = contents_list.filter(c => { return c.cfiBase == spine.cfiBase })
+        if (found === undefined) {
+          continue
+          debugger
+        }
+        const contents = found[0];
+        const elem = contents.document.getElementsByTagName("p")[0];
+        const target_cfi = new ePub.CFI(elem, spine.cfiBase)
+        const toc = this.find_toc(target_cfi, contents, spine.href);
+        this.load_comments_summary(contents, toc);
+      }
     },
     load_comments_summary: function (contents, toc) {
       console.log("load_comments_summary at ", contents, toc)
@@ -702,6 +728,9 @@ export default {
   height: 100%;
   width: 100%;
   position: absolute;
+}
 
+.fixed {
+  position: fixed !important;
 }
 </style>
