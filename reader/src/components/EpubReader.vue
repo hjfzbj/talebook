@@ -119,6 +119,7 @@ export default {
     },
     update_settings: function (opt) {
       if (opt.flow != this.settings.flow) {
+        // FIXME 切换后，翻页到下一章时css会丢失
         this.rendition.flow(opt.flow)
         this.set_menu('hide')
       }
@@ -314,18 +315,17 @@ export default {
     hide_toolbar: function () {
       this.toolbar_left = -999;
     },
-    show_toolbar: function (rect) {
-      // TODO: 在scrolled模式下，计算的位置不对
-      if (this.settings.flow == "scrolled") {
-        debugger
-      }
-      console.log("show toolbar at rect", rect)
+    show_toolbar: function (rect, iframe_rect) {
+      console.log("show toolbar at rect", rect, " from iframe rect", iframe_rect)
       const toolbar = document.getElementById('comments-toolbar');
       this.toolbar_left = (rect.width - toolbar.offsetWidth) / 2;
-      if (rect.top >= (toolbar.offsetHeight + 64)) {
-        this.toolbar_top = (rect.top - toolbar.offsetHeight - 12);
+
+      const top = rect.top + iframe_rect.y;
+      const bottom = rect.bottom + iframe_rect.y;
+      if (top >= (toolbar.offsetHeight + 64)) {
+        this.toolbar_top = (top - toolbar.offsetHeight - 12);
       } else {
-        this.toolbar_top = (rect.bottom + 12);
+        this.toolbar_top = (bottom + 12);
       }
     },
     is_toolbar_visible: function () {
@@ -364,7 +364,8 @@ export default {
       }
 
       // 把 toolbar 移动到段落附近
-      this.show_toolbar(p.getBoundingClientRect());
+      const view = this.rendition.views()._views.filter( view => { return view.index == contents.sectionIndex})[0]
+      this.show_toolbar(p.getBoundingClientRect(), view.iframe.getBoundingClientRect());
     },
     on_click_toolbar_comments: function () {
       console.log("点击发表评论按钮", this.selected_location)
@@ -657,8 +658,8 @@ export default {
   data: () => ({
     book: null,
     settings: {
-      // flow: "scrolled",
       flow: "paginated",
+      // flow: "scrolled",
       font_size: 18,
       brightness: 100,
       theme: "white",
