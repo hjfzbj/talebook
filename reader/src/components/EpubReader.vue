@@ -55,7 +55,7 @@
     </v-bottom-sheet>
 
     <!-- 浮动工具栏 -->
-    <div id="comments-toolbar" :style="`left: ${toolbar_left}px; top: ${toolbar_top}px; position: fixed`">
+    <div id="comments-toolbar" :style="`left: ${toolbar_left}px; top: ${toolbar_top}px;`">
       <v-toolbar density="compact" border dense floating elevation="10" rounded>
         <v-btn @click="on_click_toolbar_comments">发段评</v-btn>
         <v-divider vertical></v-divider>
@@ -69,9 +69,7 @@
 
     <!-- 阅读界面 -->
     <v-main id='main' class="pa-0">
-      <div id="book-container">
         <div id="reader"></div>
-      </div>
     </v-main>
 
   </v-app>
@@ -654,8 +652,8 @@ export default {
   data: () => ({
     book: null,
     settings: {
-      flow: "scrolled",
-      // flow: "paginated",
+      // flow: "scrolled",
+      flow: "paginated",
       font_size: 18,
       brightness: 100,
       theme: "white",
@@ -724,7 +722,7 @@ export default {
   z-index: 999;
 }
 
-#main {
+#main, #reader {
   height: 100%;
   width: 100%;
   position: absolute;
