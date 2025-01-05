@@ -316,7 +316,9 @@ export default {
     },
     show_toolbar: function (rect) {
       // TODO: 在scrolled模式下，计算的位置不对
-      debugger
+      if (this.settings.flow == "scrolled") {
+        debugger
+      }
       console.log("show toolbar at rect", rect)
       const toolbar = document.getElementById('comments-toolbar');
       this.toolbar_left = (rect.width - toolbar.offsetWidth) / 2;
@@ -655,8 +657,8 @@ export default {
   data: () => ({
     book: null,
     settings: {
-      flow: "scrolled",
-      // flow: "paginated",
+      // flow: "scrolled",
+      flow: "paginated",
       font_size: 18,
       brightness: 100,
       theme: "white",
