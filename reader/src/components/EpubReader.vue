@@ -165,11 +165,12 @@ export default {
       }, 300);
     },
     smart_click: function (event) {
+      const rect = event.view.frameElement.getBoundingClientRect();
       const viewer = document.getElementById('reader');
       const width = viewer.offsetWidth;
       const height = viewer.offsetHeight;
-      const x = event.clientX % viewer.offsetWidth;
-      const y = event.clientY % viewer.offsetHeight;
+      const x = (event.clientX + rect.x) % viewer.offsetWidth;
+      const y = (event.clientY + rect.y) % viewer.offsetHeight;
       this.debug_click(x, y, width, height)
 
 
@@ -183,14 +184,15 @@ export default {
       const N = width > this.wide_screen ? 5 : 3;
       if ( x < width / N || y < height / N) {
         // 点击左侧，往前翻页
-        console.log("prev page")
+        console.log("<- prev page")
         this.rendition.prev();
       } else if (x > width * (N-1) / N || y > height * (N-1) / N) {
         // 点击右侧，往后翻页
-        console.log("next page")
+        console.log("-> next page")
         this.rendition.next().then();
       } else {
         // 点击中间，显示菜单
+        console.log("-- toggle menu")
         this.menu.show_navbar = !this.menu.show_navbar;
       }
     },
