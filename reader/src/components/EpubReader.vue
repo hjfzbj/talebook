@@ -289,7 +289,7 @@ export default {
 
       // 遍历节点直到 endElement
       while (currentNode && currentNode !== end) {
-        if (currentNode.nodeName === "P") {
+        if (currentNode.nodeName.toUpperCase() === "P") {
           count++; // 如果当前节点是 <p>，则计数
         }
         currentNode = currentNode.nextSibling; // 移动到下一个兄弟节点
@@ -321,7 +321,7 @@ export default {
       var p = range.startContainer.nodeType === Node.TEXT_NODE
         ? range.startContainer.parentElement
         : range.startContainer;
-      while (p.nodeName != "P" && p.nodeName[0] != "H") {
+      while (p.nodeName.toUpperCase() != "P" && p.nodeName.toUpperCase()[0] != "H") {
         p = p.parentElement;
       }
       console.log("elem =", p);
@@ -346,8 +346,6 @@ export default {
 
       // 把 toolbar 移动到段落附近
       this.show_toolbar(p.getBoundingClientRect());
-
-      // debugger
     },
     on_click_toolbar_comments: function () {
       console.log("点击发表评论按钮", this.selected_location)
@@ -384,16 +382,6 @@ export default {
         document.body.removeChild(dotDiv);
       }, 2000);
     },
-    init_listeners: function () {
-      document.addEventListener('keyup', this.on_keyup);
-      this.rendition.on('keyup', this.on_keyup);
-      this.rendition.on('click', this.on_click_content);
-      this.rendition.on('selected', this.on_select_content);
-      this.rendition.on('locationChanged', this.on_location_changed);
-      this.rendition.on('mousedown', this.on_mousedown);
-      this.rendition.on('mouseup', this.on_mouseup);
-      this.debug_signals();
-    },
     debug_signals: function () {
       if (!this.is_debug_signal) return;
       var signals = ['click', 'selected', 'touchstart', 'touchend', 'touchmove'];
@@ -405,6 +393,17 @@ export default {
         })
       });
     },
+    init_listeners: function () {
+      document.addEventListener('keyup', this.on_keyup);
+      this.rendition.on('keyup', this.on_keyup);
+      this.rendition.on('click', this.on_click_content);
+      this.rendition.on('selected', this.on_select_content);
+      this.rendition.on('locationChanged', this.on_location_changed);
+      this.rendition.on('mousedown', this.on_mousedown);
+      this.rendition.on('mouseup', this.on_mouseup);
+      this.debug_signals();
+    },
+
     init_themes: function () {
       this.rendition.themes.register("white", "themes.css");
       this.rendition.themes.register("dark", "themes.css");
@@ -416,7 +415,7 @@ export default {
     on_add_review: function (content) {
       const loc = this.comments_location
       const review = {
-        book_id: this.review_bid,
+        book_id: this.book_id,
         chapter_name: loc.toc.label.trim(),
         chapter_id: loc.toc.chapter_id,
         segment_id: loc.segment_id,
@@ -481,7 +480,7 @@ export default {
 
       // 查询该章节的评论总数，并保存到toc对象中，然后展示图标
       const chapter_name = toc.label.trim();
-      var url = this.server + `/api/review/summary?book_id=${this.review_bid}&chapter_name=${chapter_name}`;
+      var url = this.server + `/api/review/summary?book_id=${this.book_id}&chapter_name=${chapter_name}`;
       fetch(url, { mode: "cors", credentials: "include" }).then(response => {
         if (!response.ok) {
           throw new Error('网络请求失败，状态码：' + response.status);
@@ -571,7 +570,7 @@ export default {
         this.menu_comments = true;
         return;
       }
-      const url = this.server + `/api/review/list?book_id=${this.review_bid}&chapter_id=${toc.chapter_id}&segment_id=${segment_id}&cfi=${cfi}`;
+      const url = this.server + `/api/review/list?book_id=${this.book_id}&chapter_id=${toc.chapter_id}&segment_id=${segment_id}&cfi=${cfi}`;
       fetch(url).then(rsp => rsp.json()).then(rsp => {
         this.comments = rsp.data.list;
         this.menu_comments = true;
@@ -600,7 +599,7 @@ export default {
       this.book_title = metadata.title;
       const url = this.server + `/api/review/book?title=${this.book_title}`;
       fetch(url, { mode: "cors", credentials: "include" }).then(rsp => rsp.json()).then(rsp => {
-        this.review_bid = rsp.data.id;
+        this.book_id = rsp.data.id;
       })
     });
 
@@ -608,8 +607,6 @@ export default {
     this.book.loaded.navigation.then(nav => {
       this.toc_items = nav.toc
     });
-
-    window.rend = this.rendition
 
     this.init_listeners();
     this.init_themes();
@@ -633,14 +630,13 @@ export default {
     server: "http://localhost:8080",
 
     // book_url: "/guimi2/", display_url: 'Text/Chapter_0004.xhtml',
-
     book_url: "/guimi/", display_url: "index_split_002.html#filepos160365",
 
     comments_refresh_time: 10 * 60 * 100, // 10min
     is_login: true,
     book_title: "",
     book_meta: null,
-    review_bid: 0,
+    book_id: 0,
     alert_msg: "x",
     rendition: null,
     auto_close: false,
