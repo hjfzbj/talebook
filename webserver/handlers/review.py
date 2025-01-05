@@ -7,110 +7,157 @@ from gettext import gettext as _
 
 import tornado.escape
 from webserver.handlers.base import BaseHandler, auth, js
-from webserver.models import Review, ReviewBook
+from webserver.models import Review, ReviewBook, ReviewChapter
 
 from sqlalchemy import func
 
+# reader在获取toc后，将toc传递给server，然后构建对应的结构表；
+# book_id -> [chapter_id] -> [segment_id]
+# 每个toc展平，自身名称作为chapter_id，名称
+# 每个p计算最近的一个chapter的距离 N 作为序号id
+
 
 class ReviewSummary(BaseHandler):
+    """获取「某书」+「某章节」的各个段落的评论数量"""
+
     def should_be_invited(self):
         pass
 
     @js
     def get(self):
-        bid = int(self.get_argument("bid", "0").strip())
-        cfi_base = self.get_argument("cfi_base", "").strip()
-        logging.error(bid)
-        logging.error(cfi_base)
-        if not cfi_base or not bid:
-            return {"err": "params.invalid", "msg": _(u"参数错误")}
-        q = self.session.query(Review.segment_id, func.count().label('cnt'))
-        q = q.filter(Review.bid == bid).group_by(Review.segment_id)
+        book_id = self.get_argument("book_id", "").strip()
+        chapter_name = self.get_argument("chapter_name", "").strip()
+        logging.error(book_id)
+        logging.error(chapter_name)
+        if not book_id or not chapter_name or not book_id.isdigit():
+            return {"err": "params.invalid", "msg": _("参数错误")}
+
+        # 查一下对应的章节信息是否存在
+        q = self.session.query(ReviewChapter)
+        q = q.filter(ReviewChapter.book_id == book_id, ReviewChapter.title == chapter_name)
+        chapter = q.first()
+        if chapter == None:
+            return {"err": "ok", "data": {"list": []}}
+
+        # 查询评论数量
+        q = self.session.query(Review.segment_id, func.count().label("cnt"))
+        q = q.filter(Review.book_id == book_id, Review.chapter_id == chapter.id)
+        q = q.group_by(Review.segment_id)
 
         data = []
         for row in q.all():
             segment_id, cnt = row
             data.append({"segmentId": segment_id, "reviewNum": cnt})
-        return {"err": "ok", "data": {"list": data}}
- 
+        return {"err": "ok", "data": {"chapter_id": chapter.id, "list": data}}
+
 
 class ReviewList(BaseHandler):
+    """获取某个段落的所有评论"""
+
     def should_be_invited(self):
         pass
 
     @js
     def get(self):
-        bid = int(self.get_argument("bid", "0").strip())
-        cfi_base = self.get_argument("cfi_base", "").strip()
+        book_id = self.get_argument("book_id", "").strip()
+        chapter_id = self.get_argument("chapter_id", "").strip()
         segment_id = self.get_argument("segment_id", "").strip()
-        if not cfi_base or not bid or not segment_id:
-            return {"err": "params.invalid", "msg": _(u"参数错误")}
-        
+        if not book_id or not chapter_id or not segment_id:
+            return {"err": "params.invalid", "msg": _("参数错误")}
+
+        if not book_id.isdigit() or not chapter_id.isdigit() or not segment_id.isdigit():
+            return {"err": "params.invalid", "msg": _("参数错误")}
+
         q = self.session.query(Review).filter(
-            Review.bid == bid,
-            Review.cfi_base == cfi_base,
-            Review.segment_id == segment_id)
+            Review.book_id == int(book_id), Review.chapter_id == int(chapter_id), Review.segment_id == int(segment_id)
+        )
 
         data = [row.to_full_dict(self.current_user) for row in q.all()]
 
-        return {"err": "ok", "data": {"list": data}}
-    
-        demo =       {
-        "reviewId": "1063367226805911552",
-        "cbid": "25583693309808304",
-        "ccid": "69203747871449297",
-        "guid": "854065516235",
-        "userId": "409829755",
-        "nickName": "约克君",
-        "avatar": "https://qidian.gtimg.com/qd/images/ico/default_user.0.2.png",
-        "segmentId": 5,
-        "content": "好地方，不会饿[fn=18]",
-        "status": 1,
-        "createTime": "10-15 08:37:59",
-        "createTimestamp": 1728952679,
-        "updateTime": "2024-11-16 13:36:10",
-        "quoteReviewId": "0",
-        "quoteContent": "",
-        "quoteGuid": "0",
-        "quoteUserId": "0",
-        "quoteNickName": "",
-        "type": 2,
-        "likeCount": 9,
-        "dislikeCount": 0,
-        "userLike": false,
-        "userDislike": false,
-        "isSelf": false,
-        "essenceStatus": false,
-        "riseStatus": false,
-        "level": 948,
-        "imagePre": "",
-        "imageDetail": "",
-        "rootReviewId": "1063367226805911552",
-        "rootReviewReplyCount": 0,
-        "ipAddress": "上海"
-      }
+        demo = {
+            "reviewId": "1063367226805911552",
+            "cbid": "25583693309808304",
+            "ccid": "69203747871449297",
+            "guid": "854065516235",
+            "userId": "409829755",
+            "nickName": "约克君",
+            "avatar": "https://qidian.gtimg.com/qd/images/ico/default_user.0.2.png",
+            "segmentId": 5,
+            "content": "好地方，不会饿[fn=18]",
+            "status": 1,
+            "createTime": "10-15 08:37:59",
+            "createTimestamp": 1728952679,
+            "updateTime": "2024-11-16 13:36:10",
+            "quoteReviewId": "0",
+            "quoteContent": "",
+            "quoteGuid": "0",
+            "quoteUserId": "0",
+            "quoteNickName": "",
+            "type": 2,
+            "likeCount": 9,
+            "dislikeCount": 0,
+            "userLike": False,
+            "userDislike": False,
+            "isSelf": False,
+            "essenceStatus": False,
+            "riseStatus": False,
+            "level": 948,
+            "imagePre": "",
+            "imageDetail": "",
+            "rootReviewId": "1063367226805911552",
+            "rootReviewReplyCount": 0,
+            "ipAddress": "上海",
+        }
+        return {"err": "ok", "data": {"list": data}, "demo": demo}
 
 
 class ReviewAdd(BaseHandler):
+    """发表评论"""
+
     @js
     @auth
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
         if not data:
-            return {"err": "params.invalid", "msg": _(u"参数错误")}
-        
-        n = self.session.query(Review).filter(
-            Review.bid == data['bid'],
-            Review.cfi_base == data['cfi_base'],
-            Review.segment_id == data['segment_id']).count()
-        
+            return {"err": "params.invalid", "msg": _("参数错误")}
+
+
+        # 查一下对应的章节信息是否存在
+        chapter = None
+        q = self.session.query(ReviewChapter)
+        q = q.filter(ReviewChapter.book_id == data['book_id'])
+        q = q.filter(ReviewChapter.title == data["chapter_name"])
+        if q.count() == 0:
+            chapter = ReviewChapter(book_id = data['book_id'], title=data['chapter_name'])
+            chapter.save()
+        else:
+            chapter = q.first()        
+
+        n = (
+            self.session.query(Review)
+            .filter(
+                Review.book_id == data["book_id"],
+                Review.chapter_id == chapter.id,
+                Review.segment_id == data["segment_id"],
+            )
+            .count()
+        )
+
+        del data['chapter_name']
+
         review = Review(**data)
         review.level = n + 1
+        review.chapter_id = chapter.id
         review.geo = self.request.remote_ip
         review.user_id = self.current_user.id
         review.create_time = datetime.datetime.now()
         review.update_time = review.create_time
-        review.save()
+        try:
+            review.save()
+            self.session.commit()
+        except:
+            logging.exception("save review fail")
+            self.session.rollback()
 
         if review.quote_id:
             review.quote.update_time = datetime.datetime.now()
@@ -124,6 +171,8 @@ class ReviewAdd(BaseHandler):
 
 
 class ReviewMe(BaseHandler):
+    """获取「与我相关」的「最新」评论"""
+
     @js
     @auth
     def get(self):
@@ -143,13 +192,15 @@ class ReviewMe(BaseHandler):
 
 
 class ReviewGetBook(BaseHandler):
+    """获取本书的信息（新书自动生成ID）"""
+
     @js
     def get(self):
         title = self.get_argument("title", "").strip().lower()
         calibre_id = int(self.get_argument("calibre_id", "0").strip())
 
         if not title:
-            return {"err": "params.invalid", "msg": _(u"参数错误")}
+            return {"err": "params.invalid", "msg": _("参数错误")}
 
         row = self.session.query(ReviewBook).filter(ReviewBook.calibre_id == calibre_id).first()
         if row:
@@ -159,7 +210,7 @@ class ReviewGetBook(BaseHandler):
         if row:
             return {"err": "ok", "data": row.to_dict()}
 
-        row = self.session.query(ReviewBook).filter(ReviewBook.alias.like(f'%{title}%')).first()
+        row = self.session.query(ReviewBook).filter(ReviewBook.alias.like(f"%{title}%")).first()
         if row:
             return {"err": "ok", "data": row.to_dict()}
 

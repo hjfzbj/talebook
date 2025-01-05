@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 import datetime
-import enum
 import hashlib
 import logging
 import time
@@ -11,7 +10,7 @@ import os
 from gettext import gettext as _
 
 from social_sqlalchemy.storage import JSONType, SQLAlchemyMixin
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Enum
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, BigInteger
 from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.orm import relationship, declarative_base
 
@@ -125,7 +124,7 @@ class Reader(Base, SQLAlchemyMixin):
 
     def init_default_user(self):
         class DefaultUserInfo:
-            extra_data = {"username": _(u"默认用户")}
+            extra_data = {"username": _("默认用户")}
             provider = "qq"
             uid = 123456789
 
@@ -313,7 +312,7 @@ class ScanFile(Base, SQLAlchemyMixin):
 
 
 class ReviewType:
-    comment = 1
+    text = 1
     like = 2
     dislike = 3
 
@@ -324,23 +323,42 @@ class ReviewStatus:
     deleted = 3
 
 
+class ReviewBook(Base, SQLAlchemyMixin):
+    __tablename__ = "review_books"
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), default="")
+    alias = Column(String(5120), default="")
+    calibre_id = Column(Integer, default=0)
+
+
+class ReviewChapter(Base, SQLAlchemyMixin):
+    __tablename__ = "review_chapters"
+    id = Column(Integer, primary_key=True)
+    book_id = Column(Integer, default=0)
+    title = Column(String(255), default="")  # 章节名称，例如「第一章 绯红」
+    alias = Column(String(5120), default="")  # 章节别名，例如「第一章 绯红（求月票）」
+    parents = Column(String(5120), default="")  # 父章节名，例如「第一部 小丑」
+
+
 class Review(Base, SQLAlchemyMixin):
     __tablename__ = "reviews"
     id = Column(Integer, primary_key=True)
-    bid = Column(String(255), default="")
+    book_id = Column(Integer, default=0)  # 书籍 ID
+    chapter_id = Column(Integer, default=0)  # 章节 ID
+    segment_id = Column(Integer, default=0)  # 段落 ID
+
     cfi = Column(String(255), default="")
     cfi_base = Column(String(255), default="")
-    segment_id = Column(Integer, default=0)
-    type = Column(Integer, default=0)
+    type = Column(Integer, default=0)  # ReviewType：文字、点赞、踩
     level = Column(Integer, default=0)  # 评论楼层
-    content = Column(String(1024), default="")
+    content = Column(String(1024), default="")  # 评论内容
     create_time = Column(DateTime)
     update_time = Column(DateTime)
     geo = Column(String(255), default="")
 
-    user_id = Column(Integer, ForeignKey('readers.id'))
-    root_id = Column(Integer, ForeignKey('reviews.id'))
-    quote_id = Column(Integer, ForeignKey('reviews.id'))
+    user_id = Column(Integer, ForeignKey("readers.id"))
+    root_id = Column(Integer, ForeignKey("reviews.id"))
+    quote_id = Column(Integer, ForeignKey("reviews.id"))
 
     # 定义关系属性
     user = relationship("Reader")
@@ -351,21 +369,15 @@ class Review(Base, SQLAlchemyMixin):
         remote_side=[id],  # 指明远程端，也就是关联的另一端的主键，这里是自身的id列
         foreign_keys=[root_id],  # 指明当前关系对应的外键列
         backref="all_reply",  # 反向引用名称，方便从根评论反向获取子评论
-        lazy='select'  # 设置加载策略为懒加载，按需加载关联对象，避免潜在循环依赖问题
+        lazy="select",  # 设置加载策略为懒加载，按需加载关联对象，避免潜在循环依赖问题
     )
 
     # 定义与自身关联的关系，用于表示引用的评论（quote）
-    quote = relationship(
-        "Review",
-        remote_side=[id],
-        foreign_keys=[quote_id],
-        backref="sub_reply",
-        lazy='select'
-    )
+    quote = relationship("Review", remote_side=[id], foreign_keys=[quote_id], backref="sub_reply", lazy="select")
 
-    #user = relationship(Reader, primaryjoin=user_id == Reader.id)
-    #root = relationship("Review", primaryjoin="root_id == Review.id")
-    #quote = relationship("Review", primaryjoin="quote_id == Review.id")
+    # user = relationship(Reader, primaryjoin=user_id == Reader.id)
+    # root = relationship("Review", primaryjoin="root_id == Review.id")
+    # quote = relationship("Review", primaryjoin="quote_id == Review.id")
 
     like_count = Column(Integer, default=0)
     dislike_count = Column(Integer, default=0)
@@ -373,40 +385,35 @@ class Review(Base, SQLAlchemyMixin):
     def to_full_dict(self, current_user=None):
         row = self
         d = {}
-        d['reviewId'] = row.id
-        d['cbid'] = row.bid
-        d['content'] = row.content
-        d['segmentId'] = row.segment_id
-        d['type'] = row.type
-        d['geo'] = row.geo
-        d['level'] = row.level
-        d['createTime'] = row.create_time.strftime("%Y-%m-%d %H:%M:%S")
-        d['updateTime'] = row.update_time.strftime("%Y-%m-%d %H:%M:%S")
-        d['userId']  = row.user.id
-        d['avatar'] = row.user.avatar
-        d['nickName'] = row.user.name
-        d['rootReviewId'] = row.root_id
-        d['quoteReviewId'] = row.quote_id
-        d['quoteContent'] = ""
-        d['quoteUserId'] = 0
-        d['quoteNickName'] = ""
-        d['isSelf'] = False
+        d["reviewId"] = row.id
+        d["cbid"] = row.book_id
+        d["ccid"] = row.chapter_id
+        d["bookId"] = row.book_id
+        d["chapterId"] = row.chapter_id
+        d["content"] = row.content
+        d["segmentId"] = row.segment_id
+        d["type"] = row.type
+        d["geo"] = row.geo
+        d["level"] = row.level
+        d["createTime"] = row.create_time.strftime("%Y-%m-%d %H:%M:%S")
+        d["updateTime"] = row.update_time.strftime("%Y-%m-%d %H:%M:%S")
+        d["userId"] = row.user.id
+        d["avatar"] = row.user.avatar
+        d["nickName"] = row.user.name
+        d["rootReviewId"] = row.root_id
+        d["quoteReviewId"] = row.quote_id
+        d["quoteContent"] = ""
+        d["quoteUserId"] = 0
+        d["quoteNickName"] = ""
+        d["isSelf"] = False
         if row.quote_id:
-            d['quoteContent'] = row.quote.content
-            d['quoteUserId'] = row.quote.user_id
-            d['quoteNickName'] = row.quote.user.name
+            d["quoteContent"] = row.quote.content
+            d["quoteUserId"] = row.quote.user_id
+            d["quoteNickName"] = row.quote.user.name
         if current_user:
-            d['isSelf'] = row.user_id == current_user.id
+            d["isSelf"] = row.user_id == current_user.id
         logging.error(d)
         return d
-
-
-class ReviewBook(Base, SQLAlchemyMixin):
-    __tablename__ = "review_books"
-    id = Column(Integer, primary_key=True)
-    title = Column(String(255), default="")
-    alias = Column(String(5120), default="")
-    calibre_id = Column(Integer, default=0)
 
 
 def user_syncdb(engine):

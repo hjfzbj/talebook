@@ -181,7 +181,7 @@ class BaseHandler(web.RequestHandler):
         origin = self.request.headers.get("origin", "*")
         self.set_header("Access-Control-Allow-Origin", origin)
         self.set_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
-        self.set_header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        self.set_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.set_header("Access-Control-Allow-Credentials", "true")
         self.set_hosts()
         self.set_i18n()
