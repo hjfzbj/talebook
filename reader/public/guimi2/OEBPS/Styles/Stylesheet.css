@@ -1,0 +1,383 @@
+/*————————————————————全局通用————————————————————*/
+
+html, body {
+  height: 95%;
+  padding: 0.5em;
+}
+
+/* 清除div外边距 */
+
+div {
+  margin: 0;
+}
+
+p {
+  text-align: justify;
+  text-indent: 2em;
+  duokan-text-indent: 2em;
+  line-height: 130%;
+  font-family: "宋体";
+}
+
+a {
+  text-decoration: none;
+  color: #7d0000;
+}
+
+hr {
+  margin: 0;
+  border-style: dotted;
+  border-color: #252528;
+  border-width: 1px 0 0 0;
+}
+
+.left {
+  text-align: left;
+  text-indent: 0;
+  duokan-text-indent: 0;
+}
+
+.center {
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+}
+
+.right {
+  text-align: right;
+  text-indent: 0;
+  duokan-text-indent: 0;
+}
+
+.display {
+  display: none;
+}
+
+/* 缩进 */
+
+.indent {
+  text-indent: 2em;
+  duokan-text-indent: 2em;
+}
+
+/* 清除缩进 */
+
+.clear-indent {
+  text-indent: 0;
+  duokan-text-indent: 0;
+}
+
+/*————————————————————注释————————————————————*/
+
+.duokan-footnote {
+  line-height: 1.2em;
+  height: 1.2em !important;
+  margin: 0;
+}
+
+.note-img {
+  width: 1.1em;
+  vertical-align: top;
+  cursor: pointer;
+}
+
+.footnote {
+  font-family: "楷体";
+  text-indent: 0;
+  duokan-text-indent: 0;
+}
+
+.footnote > a {
+  display: none;
+  color: #a52a2a;
+}
+
+/*————————————————————制作说明————————————————————*/
+
+body.description {
+  background-image: url(../Images/description-back.png);
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  padding: 25% 10% 0;
+}
+
+h1.description-title {
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+  font-family: "黑体";
+  font-size: 1.2em;
+  margin: 0 0 1em 0;
+  color: #FF9;
+  text-shadow: 1px 1px 0 black;
+}
+
+div.description-body {
+  padding: 1em;
+  border-radius: 0.5em;
+  border-style: solid;
+  border-color: #3d3542;
+  border-width: 0.15em;
+  background-color: rgba(51, 51, 51, 0.5);
+}
+
+p.description-text {
+  color: #f9ddd2;
+  font-family: "准圆";
+  margin: 0;
+}
+
+hr.description-hr {
+  margin: 0.5em -1em;
+  border-style: dotted;
+  border-color: #9C9;
+  border-width: 0.05em 0 0 0;
+}
+
+p.tips {
+  text-align: left;
+  text-indent: 0;
+  duokan-text-indent: 0;
+  font-family: "楷体";
+  font-size: 0.7em;
+  color: #FFC;
+  margin: 0;
+}
+
+/*————————————————————公众号———————————————————*/
+
+body.gzh {
+  background-color: white;
+  padding: 50% 10% 0;
+}
+
+div.gzh {
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+}
+
+img.gzh {
+  width: 50%;
+}
+
+p.gzh {
+  margin: 2% 0;
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+  font-family: "准圆";
+}
+
+img.qmj-logo {
+  width: 25%;
+}
+
+/*————————————————————扉页————————————————————*/
+
+/*
+body.feiye {
+  background-color: white;
+  background-image: url(../Images/feiye-back.png);
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: 100% 25%;
+  padding: 48% 15% 10%;
+}
+
+table.feiye-table {
+  margin: 0 0 0 auto;
+}
+
+th, td {
+  width: 1em;
+  vertical-align: bottom;
+  padding: 0;
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+}
+
+th.feiye-book-name {
+  font-size: 2em;
+  font-family: "小标宋";
+  text-shadow: 1px 1px 0 black;
+}
+
+td.feiye-book-author {
+  font-size: 0.7em;
+  font-family: "宋体";
+  padding: 0 0 0.5em 0;
+}
+
+th.feiye-sort {
+  font-family: "宋体";
+  vertical-align: top;
+}*/
+
+/* 控制间距 */
+
+/*
+th.space1 {
+  width: 1.3em;
+}
+
+th.space2 {
+  width: 0.5em;
+}
+
+p.feiye-website {
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+  font-family: "楷体";
+  width: 1em;
+  font-weight: bold;
+}*/
+
+/*————————————————————作者简介————————————————————*/
+
+/*————————————————————内容简介————————————————————*/
+
+body.introduction {
+  background-image: url(../Images/back.png);
+  background-position: center;
+  background-repeat: repeat;
+  background-size: 50px;
+  padding: 30% 10% 0;
+}
+
+div.introduction-content {
+  border-style: solid double;
+  border-color: #cabb94;
+  border-width: 0.3em 0.3em 0.1em;
+  padding: 0.8em;
+  text-shadow: 1px 1px black;
+  box-shadow: 1px 1px 2px black;
+}
+
+div.introduction-content p {
+  color: #cabb94;
+  margin: 0;
+  font-family: "仿宋";
+}
+
+div.introduction-bottom {
+  margin: 10% 0 0 0;
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+}
+
+img.introduction-bottom {
+  width: 90%;
+}
+
+/*————————————————————章节————————————————————*/
+
+body.part {
+  background-color: #282523;
+  background-image: url(../Images/part-back.png);
+  background-position: bottom center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  padding: 60% 0 0 0;
+}
+
+h1.part-title {
+  background-image: url(../Images/part-title-back.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 10em 10em;
+  padding: 2.5em;
+  text-align: center;
+  color: white;
+  font-size: 1.4em;
+  font-family: "哥特式字体";
+  text-shadow: 1px 1px 0 black;
+}
+
+h1.part-title span {
+  font-family: "汉仪锐智W";
+  font-size: 1.6em;
+}
+
+div.chapter-head {
+  text-align: right;
+  text-indent: 0;
+  duokan-text-indent: 0;
+  duokan-bleed: lefttopright;
+}
+
+p.chapter-head {
+  text-align: left;
+  text-indent: 0;
+  duokan-text-indent: 0;
+  float: left;
+  background-image: url(../Images/chapter-head-text-back.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 2.7em 5em;
+  padding: 2em 2em 1.8em 2.4em;
+  margin: 20% 0 0 -1.6em;
+  width: 1.5em;
+  line-height: 100%;
+  color: white;
+  font-family: "励字水柱简繁";
+  font-size: 0.8em;
+}
+
+img.chapter-head {
+  width: 70%;
+}
+
+h2.chapter-title {
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+  font-size: 1em;
+  width: 60%;
+  margin: -15% auto 2em 0;
+}
+
+span.chapter-title-number {
+  color: #282523;
+  font-family: "励字水柱简繁";
+  margin: 0;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+span.chapter-title-name {
+  font-size: 1.3em;
+  font-family: "方正剑体";
+  color: #696150;
+  margin: 0;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+div.chapter-title-split-line {
+  text-align: left;
+  margin: 2% 0 2em 0;
+}
+
+img.chapter-title-split-line {
+  width: 73%;
+}
+
+/* 结束 */
+
+p.end {
+  text-align: center;
+  text-indent: 0;
+  duokan-text-indent: 0;
+  margin: 1em 0 0 0;
+}
+
+p.end span {
+  font-family: "小标宋";
+  color: white;
+  background-color: #3d3542;
+  margin: 0 0 0 0.1em;
+  padding: 0.2em 0.2em 0.1em 0.2em;
+}

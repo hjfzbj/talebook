@@ -9,7 +9,8 @@ import tornado.escape
 from webserver.handlers.base import BaseHandler, auth, js
 from webserver.models import Review, ReviewBook, ReviewChapter
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
+from webserver.utils import super_strip
 
 # reader在获取toc后，将toc传递给server，然后构建对应的结构表；
 # book_id -> [chapter_id] -> [segment_id]
@@ -25,16 +26,16 @@ class ReviewSummary(BaseHandler):
 
     @js
     def get(self):
-        book_id = self.get_argument("book_id", "").strip()
-        chapter_name = self.get_argument("chapter_name", "").strip()
-        logging.error(book_id)
-        logging.error(chapter_name)
+        book_id = super_strip(self.get_argument("book_id", ""))
+        chapter_name = super_strip(self.get_argument("chapter_name", ""))
         if not book_id or not chapter_name or not book_id.isdigit():
             return {"err": "params.invalid", "msg": _("参数错误")}
 
         # 查一下对应的章节信息是否存在
+        name = ReviewChapter.clean_title(chapter_name)
         q = self.session.query(ReviewChapter)
-        q = q.filter(ReviewChapter.book_id == book_id, ReviewChapter.title == chapter_name)
+        q = q.filter(ReviewChapter.book_id == book_id)
+        q = q.filter(or_(ReviewChapter.title == name, ReviewChapter.alias == chapter_name))
         chapter = q.first()
         if chapter == None:
             return {"err": "ok", "data": {"list": []}}
@@ -121,29 +122,32 @@ class ReviewAdd(BaseHandler):
         if not data:
             return {"err": "params.invalid", "msg": _("参数错误")}
 
+        book_id = data['book_id']
+        chapter_name = data['chapter_name']
+        del data['chapter_name']
 
         # 查一下对应的章节信息是否存在
-        chapter = None
+        name = ReviewChapter.clean_title(chapter_name)
         q = self.session.query(ReviewChapter)
-        q = q.filter(ReviewChapter.book_id == data['book_id'])
-        q = q.filter(ReviewChapter.title == data["chapter_name"])
-        if q.count() == 0:
-            chapter = ReviewChapter(book_id = data['book_id'], title=data['chapter_name'])
+        q = q.filter(ReviewChapter.book_id == book_id)
+        q = q.filter(or_(ReviewChapter.title == name, ReviewChapter.alias == chapter_name))
+        chapter = q.first()
+
+        if chapter is None:
+            chapter = ReviewChapter(book_id = book_id, title = name, alias = chapter_name)
+            chapter.set_title(data['chapter_name'])
             chapter.save()
-        else:
-            chapter = q.first()        
 
         n = (
             self.session.query(Review)
             .filter(
-                Review.book_id == data["book_id"],
+                Review.book_id == book_id,
                 Review.chapter_id == chapter.id,
                 Review.segment_id == data["segment_id"],
             )
             .count()
         )
 
-        del data['chapter_name']
 
         review = Review(**data)
         review.level = n + 1

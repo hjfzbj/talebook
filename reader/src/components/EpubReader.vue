@@ -131,18 +131,33 @@ export default {
       console.log(item);
       this.rendition.display(item.id);
     },
-    wait_selected_then_click: function (event) {
+    on_mousedown: function (mouse_event) {
+      this.mouse_down_time = new Date();
+    },
+    on_mouseup: function (mouse_event) {
+      const t = new Date() - this.mouse_down_time;
+      if (t > 600) {
+        this.check_if_selected_content = true;
+      } else {
+        this.check_if_selected_content = false;
+      }
+    },
+    on_click_content: function (event) {
+      if (!this.check_if_selected_content) {
+        return this.smart_click(event)
+      }
+
       // epub.js 中要等待 250ms 才检测是否为selected
       // 所以这里也要等待一下，优先执行 selected 操作
       setTimeout(() => {
         if (!this.is_handlering_selected_content) {
-          this.on_click_content(event);
+          this.smart_click(event);
         } else {
           this.is_handlering_selected_content = false;
         }
       }, 300);
     },
-    on_click_content: function (event) {
+    smart_click: function (event) {
       const viewer = document.getElementById('reader');
       const width = viewer.offsetWidth;
       const x = event.clientX % viewer.offsetWidth;
@@ -179,13 +194,15 @@ export default {
           break;
         }
         const sub = subitems[mid];
-        // console.log(left, mid, right, sub)
         if (sub.cfi === undefined) {
           const pos = sub.href.split("#")[1];
           sub.elem = contents.document.getElementById(pos);
           sub.cfi = new ePub.CFI(sub.elem, contents.cfiBase);
+          sub.cfi = new ePub.CFI(sub.cfi.toString()); // 强制转成标准格式
         }
         const cmp = this.book.locations.epubcfi.compare(cfi, sub.cfi);
+        // console.log(left, mid, right, sub)
+        // console.log("compare, cmp = ", cmp, cfi, sub.cfi)
         if (cmp == 0) {
           return sub;
         }
@@ -204,41 +221,58 @@ export default {
       }
       return found;
     },
-    find_toc: function (cfi, contents) {
-      // 获取当前所属的章节（可能是一个包含N个小节的卷）
-      const section = this.book.spine.get(contents.sectionIndex);
-      for (var x in this.toc_items) {
-        const toc = this.toc_items[x];
-        // 查找 session 所属的目录信息
-        if (toc.href != section.href) {
-          continue
+    find_same_href_in_toc_tree: function (toc_tree, target_href) {
+      for (var idx in toc_tree) {
+        const toc = toc_tree[idx];
+        if (toc.href == target_href) {
+          return toc
         }
+        if (toc.subitems.length > 0) {
+          const found = this.find_same_href_in_toc_tree(toc.subitems, target_href);
+          if (found !== undefined) {
+            return found
+          }
+        }
+      }
+      return;
+    },
+    find_toc: function (search_cfi, contents) {
+      const cfi = new ePub.CFI(search_cfi.toString()); // 强制转成标准格式
+      const section = this.book.spine.get(contents.sectionIndex);
+
+      // 获取当前所属的章节（可能是一个包含N个小节的卷）
+      const toc = this.find_same_href_in_toc_tree(this.toc_items, section.href);
+      console.log("got spine href in toc:", toc)
+      if (toc === undefined) {
+        debugger
+        return;
+      }
+
+      // 填充 cfi 定位信息
+      if (toc.elem === undefined) {
         const tags = ["h1", "h2", "h3", "h4", "h5", "h6", "p"];
         for (let tag of tags) {
-          const elems = section.document.getElementsByTagName(tag)
+          const elems = contents.document.getElementsByTagName(tag)
           if (elems.length > 0) {
             toc.elem = elems[0];
             break;
           }
         }
-        toc.cfi = new ePub.CFI(toc.elem, contents.cfiBase);
-        // 如果没有子目录，那就是它自己了
-        if (toc.subitems.length == 0) {
-          return toc;
-        }
-
-        // TODO：写入缓存
-        if (toc.cfi === undefined) {
-        }
-
-        // 二分查找所属的目录
-        const found = this.bin_search(toc.subitems, cfi, contents);
-        if (this.book.locations.epubcfi.compare(cfi, found.cfi) < 0) {
-          // 检查是否在第一个subitem之前
-          return toc
-        }
-        return found;
+        const toc_cfi = new ePub.CFI(toc.elem, contents.cfiBase);
+        toc.cfi = new ePub.CFI(toc_cfi.toString());
       }
+
+      // 如果没有子目录，那就是它自己了
+      var found = toc;
+      if (toc.subitems.length > 0) {
+        // 二分查找子目录，并检查是否在第一个subitem之前
+        found = this.bin_search(toc.subitems, cfi, contents);
+        if (this.book.locations.epubcfi.compare(cfi, found.cfi) < 0) {
+          found = toc
+        }
+      }
+      console.log("find_toc = ", found)
+      return found;
     },
     count_distinct_between: function (start_elem, end_elem) {
       // 获取父节点
@@ -303,10 +337,12 @@ export default {
       // const segment_id = this.count_distinct_between(toc.elem, p);
       console.log("segment_id = ", segment_id);
 
-      this.selected_toc = toc;
-      this.selected_cfi = cfi;
-      this.selected_cfi_base = contents.cfiBase;
-      this.selected_segment_id = segment_id;
+      this.selected_location = {
+        toc: toc,
+        cfi: cfi,
+        contents: contents,
+        segment_id: segment_id
+      }
 
       // 把 toolbar 移动到段落附近
       this.show_toolbar(p.getBoundingClientRect());
@@ -314,9 +350,10 @@ export default {
       // debugger
     },
     on_click_toolbar_comments: function () {
-      console.log("点击发表评论按钮", this.selected_cfi_base, this.selected_segment_id)
+      console.log("点击发表评论按钮", this.selected_location)
+      const s = this.selected_location;
       this.hide_toolbar();
-      this.show_selected_comments(this.selected_cfi_base, this.selected_cfi, this.selected_segment_id);
+      this.show_selected_comments(s.toc, s.segment_id, s.cfi);
     },
     on_keyup: function (e) {
       const c = e.keyCode || e.which;
@@ -348,11 +385,13 @@ export default {
       }, 2000);
     },
     init_listeners: function () {
-      document.addEventListener('keyup', this.on_keyup, false);
-      this.rendition.on('keyup', this.on_keyup, false);
-      this.rendition.on('selected', this.on_select_content, true);
-      this.rendition.on('click', this.wait_selected_then_click, false);
-      this.rendition.hooks.content.register(this.load_comments);
+      document.addEventListener('keyup', this.on_keyup);
+      this.rendition.on('keyup', this.on_keyup);
+      this.rendition.on('click', this.on_click_content);
+      this.rendition.on('selected', this.on_select_content);
+      this.rendition.on('locationChanged', this.on_location_changed);
+      this.rendition.on('mousedown', this.on_mousedown);
+      this.rendition.on('mouseup', this.on_mouseup);
       this.debug_signals();
     },
     debug_signals: function () {
@@ -362,8 +401,8 @@ export default {
       signals.forEach(sig => {
         this.rendition.on(sig, (e) => {
           this.alert_msg = sig;
-          console.log(sig, e);
-        }, false)
+          console.log("rendition signal:", sig, e);
+        })
       });
     },
     init_themes: function () {
@@ -372,20 +411,21 @@ export default {
       this.rendition.themes.register("grey", "themes.css");
       this.rendition.themes.register("brown", "themes.css");
       this.rendition.themes.register("eyecare", "themes.css");
-
       this.rendition.themes.select(this.settings.theme_day);
     },
     on_add_review: function (content) {
+      const loc = this.comments_location
       const review = {
-        bid: this.review_bid,
-        cfi: this.cfi,
-        cfi_base: this.cfi_base,
-        segment_id: this.segment_id,
+        book_id: this.review_bid,
+        chapter_name: loc.toc.label.trim(),
+        chapter_id: loc.toc.chapter_id,
+        segment_id: loc.segment_id,
+        cfi: loc.cfi.toString(),
         content: content,
         type: 1,
       }
+      console.log("add review = ", review)
       const url = this.server + `/api/review/add`;
-      debugger
 
       fetch(url, {
         method: 'POST',
@@ -407,83 +447,135 @@ export default {
         console.log("add review rsp = ", rsp)
       });
     },
-    load_comments: function (section) {
-      // 在rendition加载完成后执行
-      console.log("hook: ", section, section.cfiBase)
-      if (this.review_bid <= 0) return;
+    on_location_changed: function (loc) {
+      // if (this.review_bid <= 0) return;
 
-      var url = this.server + `/api/review/summary?bid=${this.review_bid}&cfi_base=${section.cfiBase}`;
+      const contents_list = this.rendition.getContents();
+      [loc.start, loc.end].forEach(cfi => {
+        console.log("handle location ", cfi)
+        const spine = this.book.spine.get(cfi);
+        const contents = contents_list.filter(c => { return c.cfiBase == spine.cfiBase })[0];
 
+        const target_cfi = new ePub.CFI(cfi)
+        const toc = this.find_toc(target_cfi, contents, spine.href);
+
+        this.load_comments_summary(contents, toc);
+      })
+    },
+    load_comments_summary: function (contents, toc) {
+      console.log("load_comments_summary at ", contents, toc)
+      if (toc === undefined) {
+        console.log("!! 加载章评错误，章节信息为空")
+        return
+      }
+
+      // TODO 应当增加一个刷新机制
+      if (toc.load_time !== undefined) {
+        const ms = new Date() - toc.load_time;
+        if (ms < this.comments_refresh_time) {
+          return;
+        }
+      }
+
+      toc.load_time = new Date();
+
+      // 查询该章节的评论总数，并保存到toc对象中，然后展示图标
+      const chapter_name = toc.label.trim();
+      var url = this.server + `/api/review/summary?book_id=${this.review_bid}&chapter_name=${chapter_name}`;
       fetch(url, { mode: "cors", credentials: "include" }).then(response => {
         if (!response.ok) {
           throw new Error('网络请求失败，状态码：' + response.status);
         }
+        toc.load_time = undefined;
         return response.json();
       }).then(rsp => {
-        this.summary = {};
+        toc.load_time = new Date();
+        toc.summary = {}
+        toc.chapter_id = rsp.data.chapter_id;
         rsp.data.list.forEach(item => {
-          this.summary[item.segmentId] = item;
+          toc.summary[item.segmentId] = item;
+          toc.icons_rendered = false;
         })
       }).catch(function (error) {
         console.error('请求过程中出现错误：', error);
       }).finally(() => {
-        this.add_comment_icons(section);
+        this.add_comment_icons(contents, toc);
       });;
     },
-    show_selected_comments: function (cfiBase, cfi, segment_id) {
-      const url = this.server + `/api/review/list?bid=${this.review_bid}&cfi_base=${cfiBase}&segment_id=${segment_id}&cfi=${cfi}`;
+    add_comment_icons: function (contents, toc) {
+      console.log("添加评论图标和计数器：", toc.label.trim())
+
+      // 确定 segment_id 的最大值
+      var max_segment_id = 0;
+      for (var idx in toc.summary) {
+        if (idx > max_segment_id) {
+          max_segment_id = idx
+        }
+      }
+
+      // 逐个遍历
+      var segment_id = 0;
+      var currentNode = toc.elem;
+      while (segment_id <= max_segment_id && currentNode) {
+        const node_name = currentNode.nodeName.toUpperCase();
+        if (node_name === "P" || node_name[0] === "H") {
+          this.add_icon_into_paragraph(contents, currentNode, segment_id, toc)
+          segment_id++; // 移动到下一个节点，确保只add一次
+        }
+        currentNode = currentNode.nextSibling; // 移动到下一个兄弟节点
+      }
+    },
+
+    add_icon_into_paragraph: function (contents, elem, segment_id, toc) {
+      const state = toc.summary[segment_id];
+      if (state === undefined) {
+        return;
+      }
+
+      // const contents = this.rendition.getContents()[0];
+      const cfi = new ePub.CFI(elem, contents.cfiBase).toString();
+      const count = state.reviewNum;
+      const is_hot = state.is_hot ? "hot-comment" : "";
+
+      // 创建评论计数器
+      const doc = contents.document;
+      const commentCount = doc.createElement("span");
+      commentCount.textContent = count > 0 ? count : "";
+      commentCount.className = `comment-count ${is_hot}`;
+
+      // 创建评论图标
+      const commentContainer = doc.createElement("div");
+      commentContainer.className = `comment-icon ${is_hot}`;
+
+      // 将评论组件添加到段落末尾
+      commentContainer.appendChild(commentCount);
+      elem.appendChild(commentContainer);
+
+      commentContainer.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.log("点击评论按钮", toc.chapter_id, segment_id, cfi)
+        this.show_selected_comments(toc, segment_id, cfi);
+      });
+    },
+    show_selected_comments: function (toc, segment_id, cfi) {
+      // 重置状态
+      this.comments = [];
+      this.comments_location = {
+        toc: toc,
+        cfi: cfi,
+        segment_id: segment_id,
+      }
+
+      // ID 不存在的话，说明压根就没评论，不用查询了
+      if (toc.chapter_id === undefined) {
+        this.menu_comments = true;
+        return;
+      }
+      const url = this.server + `/api/review/list?book_id=${this.review_bid}&chapter_id=${toc.chapter_id}&segment_id=${segment_id}&cfi=${cfi}`;
       fetch(url).then(rsp => rsp.json()).then(rsp => {
         this.comments = rsp.data.list;
         this.menu_comments = true;
-        this.cfi_base = cfiBase;
-        this.cfi = cfi;
-        this.segment_id = segment_id;
         // this.set_menu("comments");
-      })
-    },
-    add_comment_icons: function (section) {
-      console.log("为每个段落添加评论图标和计数器")
-      const doc = section.document;
-      const paragraphs = doc.getElementsByTagName("p");
-      return;
-      Array.from(paragraphs).forEach((p, index) => {
-        // 获取段落的 CFI
-        //const cfi = section.cfiFromElement(p);
-        const cfi = new ePub.CFI(p, section.cfiBase).toString();
-        // console.log(index, cfi, p.textContent)
-
-        // 为段落添加唯一ID和CFI属性
-        const paragraphId = `p-${section.cfiBase}-${index}`;
-        p.setAttribute("data-segment-id", index);
-        p.setAttribute("data-paragraph-id", paragraphId);
-        p.setAttribute("data-cfi", cfi);
-        p.setAttribute("id", cfi);
-        console.log(index, paragraphId, cfi)
-
-        // 获取当前段落的评论数量
-        const state = this.summary[index];
-        if (state === undefined) return;
-        const count = state.reviewNum;
-        const is_hot = state.is_hot ? "hot-comment" : "";
-
-        // 创建评论计数器
-        const commentCount = doc.createElement("span");
-        commentCount.textContent = count > 0 ? count : "";
-        commentCount.className = `comment-count ${is_hot}`;
-        // 创建评论图标
-        const commentContainer = doc.createElement("div");
-        commentContainer.className = `comment-icon ${is_hot}`;
-
-        // 将评论组件添加到段落末尾
-        commentContainer.appendChild(commentCount);
-        p.appendChild(commentContainer);
-
-        commentContainer.addEventListener('click', (event) => {
-          event.stopPropagation();
-          console.log("点击评论按钮", paragraphId, section.cfiBase, cfi)
-          this.show_selected_comments(section.cfiBase, cfi, index);
-        });
-
       })
     },
   },
@@ -493,7 +585,7 @@ export default {
       this.unread_count = rsp.data.count;
     })
 
-    this.book = ePub("/guimi/");
+    this.book = ePub(this.book_url);
     this.rendition = this.book.renderTo("reader", {
       manager: "continuous",
       flow: this.settings.flow,
@@ -523,8 +615,7 @@ export default {
     this.init_themes();
 
     this.book.ready.then(() => {
-      this.rendition.display("index_split_002.html#filepos160365")
-      // this.rendition.display('Text/Chapter_0217.xhtml');
+      this.rendition.display(this.display_url)
     })
 
   },
@@ -540,6 +631,12 @@ export default {
       theme_night: "grey",
     },
     server: "http://localhost:8080",
+
+    // book_url: "/guimi2/", display_url: 'Text/Chapter_0004.xhtml',
+
+    book_url: "/guimi/", display_url: "index_split_002.html#filepos160365",
+
+    comments_refresh_time: 10 * 60 * 100, // 10min
     is_login: true,
     book_title: "",
     book_meta: null,
@@ -556,15 +653,17 @@ export default {
     theme_mode: "day",
     toc_items: [],
     comments: [],
+    comments_location: {}, // 评论内容的位置
+    selected_location: {}, // 选中内容的位置
+
     toolbar_left: -999,
     toolbar_top: 0,
-    selected_segment_id: 0,
-    selected_cfi_base: "",
-    selected_cfi: "",
+
     is_debug_signal: true,
     is_debug_click: true,
     unread_count: 0,
     is_handlering_selected_content: false,
+    check_if_selected_content: false,
   })
 }
 </script>

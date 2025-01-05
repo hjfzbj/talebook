@@ -7,6 +7,7 @@ import logging
 import time
 import json
 import os
+import re
 from gettext import gettext as _
 
 from social_sqlalchemy.storage import JSONType, SQLAlchemyMixin
@@ -339,6 +340,12 @@ class ReviewChapter(Base, SQLAlchemyMixin):
     alias = Column(String(5120), default="")  # 章节别名，例如「第一章 绯红（求月票）」
     parents = Column(String(5120), default="")  # 父章节名，例如「第一部 小丑」
 
+    @staticmethod
+    def clean_title(title):
+        s = title.replace("\u3000", " ") # 替换全角空格
+        s = re.sub("\s\s*", " ", s) # 多个空格合并为一个
+        s = re.sub("[（（【].*[】））]", "", s) # 删掉括号里的内容
+        return s
 
 class Review(Base, SQLAlchemyMixin):
     __tablename__ = "reviews"
